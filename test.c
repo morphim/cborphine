@@ -25,10 +25,10 @@ THE SOFTWARE.
 
 int main(int argc, char **argv)
 {
-    unsigned char buffer[4096];
+    uint8_t buffer[4096];
     size_t size = sizeof(buffer);
-    unsigned char *data = buffer;
-    const unsigned char *ptr = buffer;
+    uint8_t *data = buffer;
+    const uint8_t *ptr = buffer;
     cbor_token_t token;
 
     data = cbor_write_float(data, size, 3.4028234663852886e+38);

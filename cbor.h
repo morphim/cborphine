@@ -23,6 +23,8 @@ THE SOFTWARE.
 #ifndef CBOR_H
 #define CBOR_H
 
+#include "pstdint.h"
+
 typedef enum
 {
     CBOR_TOKEN_TYPE_END,
@@ -41,12 +43,12 @@ typedef enum
     CBOR_TOKEN_TYPE_ERROR = 100
 } cbor_token_type_t;
 
-#ifdef CBOR_LONGLONG_SUPPORT
-typedef long long          cbor_base_int_t;
-typedef unsigned long long cbor_base_uint_t;
+#ifdef CBOR_INT64_SUPPORT
+typedef int64_t  cbor_base_int_t;
+typedef uint64_t cbor_base_uint_t;
 #else
-typedef int          cbor_base_int_t;
-typedef unsigned int cbor_base_uint_t;
+typedef int32_t  cbor_base_int_t;
+typedef uint32_t cbor_base_uint_t;
 #endif
 
 typedef unsigned int cbor_bool_t;
@@ -65,32 +67,32 @@ typedef struct
     union
     {
         const char *string_value;
-        const unsigned char *bytes_value;
+        const uint8_t *bytes_value;
         const char *error_value;
     };
 } cbor_token_t;
 
-const unsigned char *cbor_read_token(const unsigned char *data, const unsigned char *end, cbor_token_t *token);
+const uint8_t *cbor_read_token(const uint8_t *data, const uint8_t *end, cbor_token_t *token);
 
-unsigned char *cbor_write_pint(unsigned char *data, size_t size, cbor_base_uint_t value);
-unsigned char *cbor_write_nint(unsigned char *data, size_t size, cbor_base_uint_t value);
-unsigned char *cbor_write_uint(unsigned char *data, size_t size, cbor_base_uint_t value);
-unsigned char *cbor_write_int(unsigned char *data, size_t size, cbor_base_int_t value);
+uint8_t *cbor_write_pint(uint8_t *data, size_t size, cbor_base_uint_t value);
+uint8_t *cbor_write_nint(uint8_t *data, size_t size, cbor_base_uint_t value);
+uint8_t *cbor_write_uint(uint8_t *data, size_t size, cbor_base_uint_t value);
+uint8_t *cbor_write_int(uint8_t *data, size_t size, cbor_base_int_t value);
 
-unsigned char *cbor_write_float(unsigned char *data, size_t size, float value);
-unsigned char *cbor_write_double(unsigned char *data, size_t size, double value);
+uint8_t *cbor_write_float(uint8_t *data, size_t size, float value);
+uint8_t *cbor_write_double(uint8_t *data, size_t size, double value);
 
-unsigned char *cbor_write_boolean(unsigned char *data, size_t size, cbor_bool_t value);
-unsigned char *cbor_write_null(unsigned char *data, size_t size);
-unsigned char *cbor_write_undefined(unsigned char *data, size_t size);
+uint8_t *cbor_write_boolean(uint8_t *data, size_t size, cbor_bool_t value);
+uint8_t *cbor_write_null(uint8_t *data, size_t size);
+uint8_t *cbor_write_undefined(uint8_t *data, size_t size);
 
-unsigned char *cbor_write_string(unsigned char *data, size_t size, const char *str);
-unsigned char *cbor_write_string_with_len(unsigned char *data, size_t size, const char *str, size_t str_length);
-unsigned char *cbor_write_bytes(unsigned char *data, size_t size, const unsigned char *bytes, size_t bytes_size);
+uint8_t *cbor_write_string(uint8_t *data, size_t size, const char *str);
+uint8_t *cbor_write_string_with_len(uint8_t *data, size_t size, const char *str, size_t str_length);
+uint8_t *cbor_write_bytes(uint8_t *data, size_t size, const uint8_t *bytes, size_t bytes_size);
 
-unsigned char *cbor_write_array(unsigned char *data, size_t size, cbor_base_uint_t array_size);
-unsigned char *cbor_write_map(unsigned char *data, size_t size, cbor_base_uint_t map_size);
-unsigned char *cbor_write_tag(unsigned char *data, size_t size, cbor_base_uint_t tag);
-unsigned char *cbor_write_special(unsigned char *data, size_t size, cbor_base_uint_t special);
+uint8_t *cbor_write_array(uint8_t *data, size_t size, cbor_base_uint_t array_size);
+uint8_t *cbor_write_map(uint8_t *data, size_t size, cbor_base_uint_t map_size);
+uint8_t *cbor_write_tag(uint8_t *data, size_t size, cbor_base_uint_t tag);
+uint8_t *cbor_write_special(uint8_t *data, size_t size, cbor_base_uint_t special);
 
 #endif
