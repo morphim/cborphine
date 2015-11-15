@@ -40,27 +40,42 @@ static cbor_token_type_t cbor_internal_types_map[] =
     CBOR_TOKEN_TYPE_SPECIAL /* 7 */
 };
 
-static cbor_bool_t cbor_internal_extract_special_value(unsigned char minor_type, cbor_token_t *token)
+static unsigned char *cbor_internal_swap_2bytes(unsigned char *dest, const unsigned char *src)
 {
-    switch (minor_type)
-    {
-    case 20: /* false */
-        token->type = CBOR_TOKEN_TYPE_BOOLEAN;
-        token->int_value = CBOR_FALSE;
-        return CBOR_TRUE;
-    case 21: /* true */
-        token->type = CBOR_TOKEN_TYPE_BOOLEAN;
-        token->int_value = CBOR_TRUE;
-        return CBOR_TRUE;
-    case 22: /* null */
-        token->type = CBOR_TOKEN_TYPE_NULL;
-        return CBOR_TRUE;
-    case 23: /* undefined */
-        token->type = CBOR_TOKEN_TYPE_UNDEFINED;
-        return CBOR_TRUE;
-    }
+#ifdef CBOR_BIGENDIAN_PLATFORM
+    memcpy(dest, src, 2);
+#else
+    unsigned short orig_value = *(unsigned short *)src;
+    *(unsigned short *)dest = (orig_value << 8) |
+                              (orig_value >> 8);
+#endif
 
-    return CBOR_FALSE;
+    return dest + 2;
+}
+
+static unsigned char *cbor_internal_swap_4bytes(unsigned char *dest, const unsigned char *src)
+{
+#ifdef CBOR_BIGENDIAN_PLATFORM
+    memcpy(dest, src, 4);
+#else
+    unsigned int orig_value = *(unsigned int *)src;
+    *(unsigned int *)dest = ((orig_value & 0x000000FF) << 24) |
+                            ((orig_value & 0x0000FF00) << 8)  |
+                            ((orig_value & 0x00FF0000) >> 8)  |
+                            ((orig_value & 0xFF000000) >> 24);
+#endif
+
+    return dest + 4;
+}
+
+static unsigned char *cbor_internal_swap_8bytes(unsigned char *dest, const unsigned char *src)
+{
+#ifdef CBOR_BIGENDIAN_PLATFORM
+    memcpy(dest, src, 8);
+    return dest + 8;
+#else
+    return cbor_internal_swap_4bytes(cbor_internal_swap_4bytes(dest, src + 4), src);
+#endif
 }
 
 static int cbor_internal_get_length(unsigned char minor_type)
@@ -77,6 +92,126 @@ static int cbor_internal_get_length(unsigned char minor_type)
     }
 
     return -1;
+}
+
+static const unsigned char *cbor_internal_read_int_value(unsigned char minor_type, const unsigned char *pos, const unsigned char *end, cbor_token_t *token)
+{
+    int type_length = cbor_internal_get_length(minor_type);
+
+    if (type_length < 0)
+    {
+        token->type = CBOR_TOKEN_TYPE_ERROR;
+        token->error_value = "invalid length";
+        return NULL;
+    }
+
+    if ((size_t)(end - pos) < (size_t)type_length)
+    {
+        token->type = CBOR_TOKEN_TYPE_ERROR;
+        token->error_value = "insufficient data";
+        return NULL;
+    }
+
+    switch (type_length)
+    {
+    case 0:
+        token->int_value = minor_type;
+        return pos;
+    case 1:
+        token->int_value = *pos;
+        return pos + 1;
+    case 2:
+        {
+            unsigned short short_value;
+            cbor_internal_swap_2bytes((unsigned char *)&short_value, pos);
+            token->int_value = short_value;
+            return pos + 2;
+        }
+    case 4:
+        {
+            unsigned int int_value;
+            cbor_internal_swap_4bytes((unsigned char *)&int_value, pos);
+            token->int_value = int_value;
+            return pos + 4;
+        }
+    case 8:
+#ifdef CBOR_LONGLONG_SUPPORT
+        {
+            cbor_base_uint_t value;
+            cbor_internal_swap_8bytes((unsigned char *)&value, pos);
+            token->int_value = value;
+            return pos + 8;
+        }
+#else
+        token->type = CBOR_TOKEN_TYPE_ERROR;
+        token->error_value = "64 bits integers are not supported";
+        return NULL;
+#endif
+    }
+
+    token->type = CBOR_TOKEN_TYPE_ERROR;
+    token->error_value = "unknown error";
+    return NULL;
+}
+
+static const unsigned char *cbor_internal_extract_special_value(unsigned char minor_type, const unsigned char *pos, const unsigned char *end, cbor_token_t *token)
+{
+    switch (minor_type)
+    {
+    case 20: /* false */
+        token->type = CBOR_TOKEN_TYPE_BOOLEAN;
+        token->int_value = CBOR_FALSE;
+        return pos;
+    case 21: /* true */
+        token->type = CBOR_TOKEN_TYPE_BOOLEAN;
+        token->int_value = CBOR_TRUE;
+        return pos;
+    case 22: /* null */
+        token->type = CBOR_TOKEN_TYPE_NULL;
+        return pos;
+    case 23: /* undefined */
+        token->type = CBOR_TOKEN_TYPE_UNDEFINED;
+        return pos;
+    case 26: /* single-precision float */
+        if ((size_t)(end - pos) < 4)
+        {
+            token->type = CBOR_TOKEN_TYPE_ERROR;
+            token->error_value = "insufficient data";
+            return NULL;
+        }
+        {
+            float float_value;
+            cbor_internal_swap_4bytes((unsigned char *)&float_value, pos);
+
+            token->type = CBOR_TOKEN_TYPE_FLOAT;
+            token->float_value = float_value;
+            return pos + 4;
+        }
+    case 27: /* double-precision float */
+        if ((size_t)(end - pos) < 8)
+        {
+            token->type = CBOR_TOKEN_TYPE_ERROR;
+            token->error_value = "insufficient data";
+            return NULL;
+        }
+        {
+            double double_value;
+            cbor_internal_swap_8bytes((unsigned char *)&double_value, pos);
+
+            token->type = CBOR_TOKEN_TYPE_FLOAT;
+            token->float_value = double_value;
+            return pos + 8;
+        }
+    default:
+        {
+            const unsigned char *result = cbor_internal_read_int_value(minor_type, pos, end, token);
+            if (result == NULL)
+                return NULL;
+
+            token->type = CBOR_TOKEN_TYPE_SPECIAL;
+            return result;
+        }
+    }
 }
 
 static unsigned char *cbor_internal_write_int_value(unsigned char *data, size_t size, unsigned int type, size_t check_bytes, cbor_base_uint_t value)
@@ -102,14 +237,15 @@ static unsigned char *cbor_internal_write_int_value(unsigned char *data, size_t 
     }
     else if (value < CBOR_MAX_2BYTE_LIMIT)
     {
+        unsigned short short_value;
+
         if (size < 3 + check_bytes)
             return data;
 
         *data++ = (unsigned char) ((type << 5) | 25);
-        *data++ = (unsigned char) (value >> 8);
-        *data++ = (unsigned char) value;
 
-        return data;
+        short_value = (unsigned short)value;
+        return cbor_internal_swap_2bytes(data, (const unsigned char *)&short_value);
     }
 #ifdef CBOR_LONGLONG_SUPPORT
     else if (value < CBOR_MAX_4BYTE_LIMIT)
@@ -117,16 +253,15 @@ static unsigned char *cbor_internal_write_int_value(unsigned char *data, size_t 
     else
 #endif
     {
+        unsigned int int_value;
+
         if (size < 5 + check_bytes)
             return data;
 
         *data++ = (unsigned char) ((type << 5) | 26);
-        *data++ = (unsigned char) (value >> 24);
-        *data++ = (unsigned char) (value >> 16);
-        *data++ = (unsigned char) (value >> 8);
-        *data++ = (unsigned char) value;
 
-        return data;
+        int_value = (unsigned int)value;
+        return cbor_internal_swap_4bytes(data, (const unsigned char *)&int_value);
     }
 #ifdef CBOR_LONGLONG_SUPPORT
     else
@@ -135,18 +270,37 @@ static unsigned char *cbor_internal_write_int_value(unsigned char *data, size_t 
             return data;
 
         *data++ = (unsigned char) ((type << 5) | 27);
-        *data++ = (unsigned char) (value >> 56);
-        *data++ = (unsigned char) (value >> 48);
-        *data++ = (unsigned char) (value >> 40);
-        *data++ = (unsigned char) (value >> 32);
-        *data++ = (unsigned char) (value >> 24);
-        *data++ = (unsigned char) (value >> 16);
-        *data++ = (unsigned char) (value >> 8);
-        *data++ = (unsigned char) value;
 
-        return data;
+        return cbor_internal_swap_8bytes(data, (const unsigned char *)&value);
     }
 #endif
+}
+
+static unsigned char *cbor_internal_write_float_value(unsigned char *data, size_t size, size_t type_length, const unsigned char *value_bytes)
+{
+    switch (type_length)
+    {
+    case 2:
+        if (size < 3)
+            return data;
+
+        *data++ = (unsigned char) ((7 << 5) | 25); /* major type is 7, minor type is 25 */
+        return cbor_internal_swap_2bytes(data, value_bytes);
+    case 4:
+        if (size < 5)
+            return data;
+
+        *data++ = (unsigned char) ((7 << 5) | 26); /* major type is 7, minor type is 26 */
+        return cbor_internal_swap_4bytes(data, value_bytes);
+    case 8:
+        if (size < 9)
+            return data;
+
+        *data++ = (unsigned char) ((7 << 5) | 27); /* major type is 7, minor type is 27 */
+        return cbor_internal_swap_8bytes(data, value_bytes);
+    }
+
+    return data;
 }
 
 static unsigned char *cbor_internal_write_bytes(unsigned char *data, size_t size, unsigned int type, size_t bytes_size, const unsigned char *bytes)
@@ -160,14 +314,12 @@ static unsigned char *cbor_internal_write_bytes(unsigned char *data, size_t size
     return result;
 }
 
-unsigned char *cbor_read_token(unsigned char *data, unsigned char *end, cbor_token_t *token)
+const unsigned char *cbor_read_token(const unsigned char *data, const unsigned char *end, cbor_token_t *token)
 {
-    unsigned char *current_pos;
+    const unsigned char *current_pos;
     unsigned char type;
     unsigned char major_type;
     unsigned char minor_type;
-    int type_length;
-    cbor_base_uint_t length_value;
 
     if (data >= end)
     {
@@ -179,96 +331,54 @@ unsigned char *cbor_read_token(unsigned char *data, unsigned char *end, cbor_tok
     type = *current_pos++;
     major_type = type >> 5;
     minor_type = type & 31;
-    type_length = cbor_internal_get_length(minor_type);
-
-    if (type_length < 0)
-    {
-        token->type = CBOR_TOKEN_TYPE_ERROR;
-        token->error_value = "invalid length";
-        return data;
-    }
-
-    if ((size_t)(end - current_pos) < (size_t)type_length)
-    {
-        token->type = CBOR_TOKEN_TYPE_ERROR;
-        token->error_value = "insufficient data";
-        return data;
-    }
-
-    switch (type_length)
-    {
-    case 0:
-        length_value = minor_type;
-        break;
-    case 1:
-        length_value = *current_pos;
-        break;
-    case 2:
-        length_value = ((unsigned short)*(current_pos + 0) << 8) |
-                       ((unsigned short)*(current_pos + 1));
-        break;
-    case 4:
-        length_value = ((unsigned int)*(current_pos + 0) << 24) |
-                       ((unsigned int)*(current_pos + 1) << 16) |
-                       ((unsigned int)*(current_pos + 2) << 8)  |
-                       ((unsigned int)*(current_pos + 3));
-        break;
-    case 8:
-#ifdef CBOR_LONGLONG_SUPPORT
-        length_value = ((unsigned long long)*(current_pos + 0) << 56) |
-                       ((unsigned long long)*(current_pos + 1) << 48) |
-                       ((unsigned long long)*(current_pos + 2) << 40) |
-                       ((unsigned long long)*(current_pos + 3) << 32) |
-                       ((unsigned long long)*(current_pos + 4) << 24) |
-                       ((unsigned long long)*(current_pos + 5) << 16) |
-                       ((unsigned long long)*(current_pos + 6) << 8)  |
-                       ((unsigned long long)*(current_pos + 7));
-        break;
-#else
-        token->type = CBOR_TOKEN_TYPE_ERROR;
-        token->error_value = "64 bits integers are not supported";
-        return data;
-#endif
-    }
-
-    current_pos += type_length;
 
     switch (major_type)
     {
     case 0: /* positive integer */
+        current_pos = cbor_internal_read_int_value(minor_type, current_pos, end, token);
+        if (current_pos == NULL)
+            return data;
+
         token->type = CBOR_TOKEN_TYPE_INT;
         token->sign = 1;
-        token->int_value = length_value;
         return current_pos;
     case 1: /* negative integer */
+        current_pos = cbor_internal_read_int_value(minor_type, current_pos, end, token);
+        if (current_pos == NULL)
+            return data;
+
         token->type = CBOR_TOKEN_TYPE_INT;
         token->sign = -1;
-        token->int_value = length_value + 1;
         return current_pos;
     case 2: /* bytes */
     case 3: /* string */
-        if ((size_t)(end - current_pos) < length_value)
+        current_pos = cbor_internal_read_int_value(minor_type, current_pos, end, token);
+        if (current_pos == NULL)
+            return data;
+
+        if ((size_t)(end - current_pos) < token->int_value)
         {
             token->type = CBOR_TOKEN_TYPE_ERROR;
             token->error_value = "insufficient data";
             return data;
         }
         token->type = cbor_internal_types_map[major_type];
-        token->int_value = length_value;
         token->bytes_value = current_pos;
-        return current_pos + length_value;
+        return current_pos + token->int_value;
     case 4: /* array */
     case 5: /* map */
     case 6: /* tag */
+        current_pos = cbor_internal_read_int_value(minor_type, current_pos, end, token);
+        if (current_pos == NULL)
+            return data;
+
         token->type = cbor_internal_types_map[major_type];
-        token->int_value = length_value;
         return current_pos;
     case 7: /* special */
-        if (cbor_internal_extract_special_value(minor_type, token))
-            return current_pos;
+        current_pos = cbor_internal_extract_special_value(minor_type, current_pos, end, token);
+        if (current_pos == NULL)
+            return data;
 
-        token->type = CBOR_TOKEN_TYPE_SPECIAL;
-        token->int_value = length_value;
         return current_pos;
     default:
         token->type = CBOR_TOKEN_TYPE_ERROR;
@@ -298,6 +408,16 @@ unsigned char *cbor_write_int(unsigned char *data, size_t size, cbor_base_int_t 
         return cbor_write_nint(data, size, (unsigned long long)(-value));
     else
         return cbor_write_pint(data, size, (unsigned long long)(value));
+}
+
+unsigned char *cbor_write_float(unsigned char *data, size_t size, float value)
+{
+    return cbor_internal_write_float_value(data, size, sizeof(value), (const unsigned char *)&value);
+}
+
+unsigned char *cbor_write_double(unsigned char *data, size_t size, double value)
+{
+    return cbor_internal_write_float_value(data, size, sizeof(value), (const unsigned char *)&value);
 }
 
 unsigned char *cbor_write_boolean(unsigned char *data, size_t size, cbor_bool_t value)

@@ -28,9 +28,10 @@ int main(int argc, char **argv)
     unsigned char buffer[4096];
     size_t size = sizeof(buffer);
     unsigned char *data = buffer;
-    unsigned char *ptr = buffer;
+    const unsigned char *ptr = buffer;
     cbor_token_t token;
 
+    data = cbor_write_float(data, size, 3.4028234663852886e+38);
     data = cbor_write_int(data, size, 500);
     data = cbor_write_boolean(data, size, CBOR_TRUE);
     data = cbor_write_boolean(data, size, CBOR_FALSE);
@@ -66,6 +67,9 @@ int main(int argc, char **argv)
         {
         case CBOR_TOKEN_TYPE_INT:
             printf("int %s%llu\n", token.sign < 0 ? "-" : "", token.int_value);
+            break;
+        case CBOR_TOKEN_TYPE_FLOAT:
+            printf("float %f\n", token.float_value);
             break;
         case CBOR_TOKEN_TYPE_ARRAY:
             printf("array length %u\n", token.int_value);

@@ -36,6 +36,7 @@ typedef enum
     CBOR_TOKEN_TYPE_BOOLEAN,
     CBOR_TOKEN_TYPE_NULL,
     CBOR_TOKEN_TYPE_UNDEFINED,
+    CBOR_TOKEN_TYPE_FLOAT,
 
     CBOR_TOKEN_TYPE_ERROR = 100
 } cbor_token_type_t;
@@ -55,22 +56,29 @@ typedef unsigned int cbor_bool_t;
 typedef struct
 {
     cbor_token_type_t type;
-    cbor_base_uint_t int_value;
+    union
+    {
+        cbor_base_uint_t int_value;
+        double float_value;
+    };
     int sign;
     union
     {
-        char *string_value;
-        unsigned char *bytes_value;
+        const char *string_value;
+        const unsigned char *bytes_value;
         const char *error_value;
     };
 } cbor_token_t;
 
-unsigned char *cbor_read_token(unsigned char *data, unsigned char *end, cbor_token_t *token);
+const unsigned char *cbor_read_token(const unsigned char *data, const unsigned char *end, cbor_token_t *token);
 
 unsigned char *cbor_write_pint(unsigned char *data, size_t size, cbor_base_uint_t value);
 unsigned char *cbor_write_nint(unsigned char *data, size_t size, cbor_base_uint_t value);
 unsigned char *cbor_write_uint(unsigned char *data, size_t size, cbor_base_uint_t value);
 unsigned char *cbor_write_int(unsigned char *data, size_t size, cbor_base_int_t value);
+
+unsigned char *cbor_write_float(unsigned char *data, size_t size, float value);
+unsigned char *cbor_write_double(unsigned char *data, size_t size, double value);
 
 unsigned char *cbor_write_boolean(unsigned char *data, size_t size, cbor_bool_t value);
 unsigned char *cbor_write_null(unsigned char *data, size_t size);
