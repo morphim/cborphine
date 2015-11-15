@@ -28,6 +28,10 @@ THE SOFTWARE.
 #define CBOR_MAX_2BYTE_LIMIT    65536
 #define CBOR_MAX_4BYTE_LIMIT    4294967296
 
+#define CBOR_CREATE_INITIAL_BYTE(major_type, minor_type) ((uint8_t) (((major_type) << 5) | (minor_type)))
+#define CBOR_GET_MAJOR_TYPE(initial_byte) ((initial_byte) >> 5)
+#define CBOR_GET_MINOR_TYPE(initial_byte) ((initial_byte) & 31)
+
 static cbor_token_type_t cbor_internal_types_map[] =
 {
     CBOR_TOKEN_TYPE_INT,    /* 0 */
@@ -47,7 +51,7 @@ static uint8_t *cbor_internal_swap_2bytes(uint8_t *dest, const uint8_t *src)
 #else
     uint16_t orig_value = *(uint16_t *)src;
     *(uint16_t *)dest = (orig_value << 8) |
-                              (orig_value >> 8);
+                        (orig_value >> 8);
 #endif
 
     return dest + 2;
@@ -60,9 +64,9 @@ static uint8_t *cbor_internal_swap_4bytes(uint8_t *dest, const uint8_t *src)
 #else
     uint32_t orig_value = *(uint32_t *)src;
     *(uint32_t *)dest = ((orig_value & 0x000000FF) << 24) |
-                            ((orig_value & 0x0000FF00) << 8)  |
-                            ((orig_value & 0x00FF0000) >> 8)  |
-                            ((orig_value & 0xFF000000) >> 24);
+                        ((orig_value & 0x0000FF00) << 8)  |
+                        ((orig_value & 0x00FF0000) >> 8)  |
+                        ((orig_value & 0xFF000000) >> 24);
 #endif
 
     return dest + 4;
@@ -135,7 +139,7 @@ static const uint8_t *cbor_internal_read_int_value(unsigned int minor_type, cons
             return pos + 4;
         }
     case 8:
-#ifdef CBOR_LONGLONG_SUPPORT
+#ifdef CBOR_INT64_SUPPORT
         {
             cbor_base_uint_t value;
             cbor_internal_swap_8bytes((uint8_t *)&value, pos);
@@ -221,7 +225,7 @@ static uint8_t *cbor_internal_write_int_value(uint8_t *data, size_t size, unsign
         if (size < 1 + check_bytes)
             return data;
 
-        *data++ = (uint8_t) ((type << 5) | value);
+        *data++ = CBOR_CREATE_INITIAL_BYTE(type, value);
 
         return data;
     }
@@ -230,7 +234,7 @@ static uint8_t *cbor_internal_write_int_value(uint8_t *data, size_t size, unsign
         if (size < 2 + check_bytes)
             return data;
 
-        *data++ = (uint8_t) ((type << 5) | 24);
+        *data++ = CBOR_CREATE_INITIAL_BYTE(type, 24);
         *data++ = (uint8_t) value;
 
         return data;
@@ -242,12 +246,12 @@ static uint8_t *cbor_internal_write_int_value(uint8_t *data, size_t size, unsign
         if (size < 3 + check_bytes)
             return data;
 
-        *data++ = (uint8_t) ((type << 5) | 25);
+        *data++ = CBOR_CREATE_INITIAL_BYTE(type, 25);
 
         short_value = (uint16_t)value;
         return cbor_internal_swap_2bytes(data, (const uint8_t *)&short_value);
     }
-#ifdef CBOR_LONGLONG_SUPPORT
+#ifdef CBOR_INT64_SUPPORT
     else if (value < CBOR_MAX_4BYTE_LIMIT)
 #else
     else
@@ -258,18 +262,18 @@ static uint8_t *cbor_internal_write_int_value(uint8_t *data, size_t size, unsign
         if (size < 5 + check_bytes)
             return data;
 
-        *data++ = (uint8_t) ((type << 5) | 26);
+        *data++ = CBOR_CREATE_INITIAL_BYTE(type, 26);
 
         int_value = (uint32_t)value;
         return cbor_internal_swap_4bytes(data, (const uint8_t *)&int_value);
     }
-#ifdef CBOR_LONGLONG_SUPPORT
+#ifdef CBOR_INT64_SUPPORT
     else
     {
         if (size < 9 + check_bytes)
             return data;
 
-        *data++ = (uint8_t) ((type << 5) | 27);
+        *data++ = CBOR_CREATE_INITIAL_BYTE(type, 27);
 
         return cbor_internal_swap_8bytes(data, (const uint8_t *)&value);
     }
@@ -284,19 +288,19 @@ static uint8_t *cbor_internal_write_float_value(uint8_t *data, size_t size, size
         if (size < 3)
             return data;
 
-        *data++ = (uint8_t) ((7 << 5) | 25); /* major type is 7, minor type is 25 */
+        *data++ = CBOR_CREATE_INITIAL_BYTE(7, 25);
         return cbor_internal_swap_2bytes(data, value_bytes);
     case 4:
         if (size < 5)
             return data;
 
-        *data++ = (uint8_t) ((7 << 5) | 26); /* major type is 7, minor type is 26 */
+        *data++ = CBOR_CREATE_INITIAL_BYTE(7, 26);
         return cbor_internal_swap_4bytes(data, value_bytes);
     case 8:
         if (size < 9)
             return data;
 
-        *data++ = (uint8_t) ((7 << 5) | 27); /* major type is 7, minor type is 27 */
+        *data++ = CBOR_CREATE_INITIAL_BYTE(7, 27);
         return cbor_internal_swap_8bytes(data, value_bytes);
     }
 
@@ -317,7 +321,7 @@ static uint8_t *cbor_internal_write_bytes(uint8_t *data, size_t size, unsigned i
 const uint8_t *cbor_read_token(const uint8_t *data, const uint8_t *end, cbor_token_t *token)
 {
     const uint8_t *current_pos;
-    unsigned int type;
+    uint8_t initial_byte;
     unsigned int major_type;
     unsigned int minor_type;
 
@@ -328,9 +332,9 @@ const uint8_t *cbor_read_token(const uint8_t *data, const uint8_t *end, cbor_tok
     }
 
     current_pos = data;
-    type = *current_pos++;
-    major_type = type >> 5;
-    minor_type = type & 31;
+    initial_byte = *current_pos++;
+    major_type = CBOR_GET_MAJOR_TYPE(initial_byte);
+    minor_type = CBOR_GET_MINOR_TYPE(initial_byte);
 
     switch (major_type)
     {
