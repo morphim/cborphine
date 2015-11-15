@@ -348,6 +348,7 @@ const unsigned char *cbor_read_token(const unsigned char *data, const unsigned c
             return data;
 
         token->type = CBOR_TOKEN_TYPE_INT;
+        token->int_value = token->int_value + 1;
         token->sign = -1;
         return current_pos;
     case 2: /* bytes */
