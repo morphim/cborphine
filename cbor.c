@@ -473,7 +473,7 @@ uint8_t *cbor_write_tag(uint8_t *data, size_t size, cbor_base_uint_t tag)
     return cbor_internal_write_int_value(data, size, 6, 0, tag);
 }
 
-uint8_t *cbor_write_special(uint8_t *data, size_t size, cbor_base_uint_t special)
+uint8_t *cbor_write_special(uint8_t *data, size_t size, uint8_t special)
 {
     return cbor_internal_write_int_value(data, size, 7, 0, special);
 }

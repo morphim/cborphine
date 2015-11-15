@@ -93,6 +93,6 @@ uint8_t *cbor_write_bytes(uint8_t *data, size_t size, const uint8_t *bytes, size
 uint8_t *cbor_write_array(uint8_t *data, size_t size, cbor_base_uint_t array_size);
 uint8_t *cbor_write_map(uint8_t *data, size_t size, cbor_base_uint_t map_size);
 uint8_t *cbor_write_tag(uint8_t *data, size_t size, cbor_base_uint_t tag);
-uint8_t *cbor_write_special(uint8_t *data, size_t size, cbor_base_uint_t special);
+uint8_t *cbor_write_special(uint8_t *data, size_t size, uint8_t special);
 
 #endif
