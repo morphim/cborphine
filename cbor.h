@@ -58,11 +58,11 @@ typedef unsigned int cbor_bool_t;
 typedef struct
 {
     cbor_token_type_t type;
-    cbor_base_uint_t int_value;
-    int sign;
-    double float_value;
-    const uint8_t *bytes_value;
-    const char *error_value;
+    int sign; /* used with CBOR_TOKEN_TYPE_INT type only */
+    cbor_base_uint_t int_value; /* used as a simple value or length of data */
+    double float_value; /* used with CBOR_TOKEN_TYPE_FLOAT type only */
+    const uint8_t *bytes_value; /* used with CBOR_TOKEN_TYPE_BYTES and CBOR_TOKEN_TYPE_STRING types */
+    const char *error_value; /* used with CBOR_TOKEN_TYPE_ERROR type only */
 } cbor_token_t;
 
 const uint8_t *cbor_read_token(const uint8_t *data, const uint8_t *end, cbor_token_t *token);
