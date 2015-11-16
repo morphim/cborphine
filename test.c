@@ -72,13 +72,13 @@ int main(int argc, char **argv)
             printf("float %f\n", token.float_value);
             break;
         case CBOR_TOKEN_TYPE_ARRAY:
-            printf("array length %u\n", token.int_value);
+            printf("array length %llu\n", token.int_value);
             break;
         case CBOR_TOKEN_TYPE_MAP:
-            printf("map length %u\n", token.int_value);
+            printf("map length %llu\n", token.int_value);
             break;
         case CBOR_TOKEN_TYPE_TAG:
-            printf("tag %u\n", token.int_value);
+            printf("tag %llu\n", token.int_value);
             break;
         case CBOR_TOKEN_TYPE_SPECIAL:
             printf("special %u\n", token.int_value);
@@ -93,10 +93,10 @@ int main(int argc, char **argv)
             printf("undefined\n");
             break;
         case CBOR_TOKEN_TYPE_STRING:
-            printf("string '%.*s'\n", (int)token.int_value, token.string_value);
+            printf("string '%.*s'\n", (int)token.int_value, (const char *)token.bytes_value);
             break;
         case CBOR_TOKEN_TYPE_BYTES:
-            printf("bytes size %u\n", token.int_value);
+            printf("bytes size %llu\n", token.int_value);
             break;
         }
     }
