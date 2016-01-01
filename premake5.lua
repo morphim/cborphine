@@ -3,6 +3,11 @@ newoption {
     description = 'Enable big-endian byte order support (default is little-endian)'
 }
 
+newoption {
+    trigger     = 'disable-int64',
+    description = 'Disable 64 bits integers support (enabled by default)'
+}
+
 solution "cborphine"
     configurations { "Debug", "Release" }
     platforms { "x64", "x32" }
@@ -11,8 +16,9 @@ solution "cborphine"
         defines { "CBOR_BIGENDIAN_PLATFORM" }
     end
 
-    configuration "x64"
+    if not _OPTIONS['disable-int64'] then
         defines { "CBOR_INT64_SUPPORT" }
+    end
 
 project "cborphine"
     kind "StaticLib"
