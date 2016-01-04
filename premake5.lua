@@ -50,11 +50,8 @@ project "cborphine-tests"
 
     filter "configurations:Debug"
         defines { "DEBUG" }
+        flags { "Symbols" }
 
-        flags { 
-            "Symbols",
-        }
-
-      filter "configurations:Release"
-            defines { "NDEBUG" }
-            optimize "On"
+    filter "configurations:Release"
+        defines { "NDEBUG" }
+        optimize "On"
