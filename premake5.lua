@@ -1,4 +1,9 @@
 newoption {
+    trigger     = 'use-standard-stdint',
+    description = 'Use standard stdint.h header (disabled by default)'
+}
+
+newoption {
     trigger     = 'use-big-endian',
     description = 'Use big-endian byte order (default is little-endian)'
 }
@@ -11,6 +16,10 @@ newoption {
 solution "cborphine"
     configurations { "Debug", "Release" }
     platforms { "x64", "x32" }
+
+    if _OPTIONS['use-standard-stdint'] then
+        defines { "CBOR_USE_STANDARD_STDINT" }
+    end
 
     if _OPTIONS['use-big-endian'] then
         defines { "CBOR_BIGENDIAN_PLATFORM" }
