@@ -23,7 +23,11 @@ THE SOFTWARE.
 #ifndef CBOR_H
 #define CBOR_H
 
+#ifdef CBOR_USE_STANDARD_STDINT
+#include <stdint.h>
+#else
 #include "pstdint.h"
+#endif
 
 typedef enum
 {
@@ -65,6 +69,11 @@ typedef struct
     const char *error_value;    /* used with CBOR_TOKEN_TYPE_ERROR type only */
 } cbor_token_t;
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 const uint8_t *cbor_read_token(const uint8_t *data, const uint8_t *end, cbor_token_t *token);
 
 uint8_t *cbor_write_pint(uint8_t *data, size_t size, cbor_base_uint_t value);
@@ -87,5 +96,9 @@ uint8_t *cbor_write_array(uint8_t *data, size_t size, cbor_base_uint_t array_siz
 uint8_t *cbor_write_map(uint8_t *data, size_t size, cbor_base_uint_t map_size);
 uint8_t *cbor_write_tag(uint8_t *data, size_t size, cbor_base_uint_t tag);
 uint8_t *cbor_write_special(uint8_t *data, size_t size, uint8_t special);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
