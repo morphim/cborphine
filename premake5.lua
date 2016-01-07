@@ -1,6 +1,6 @@
 newoption {
-    trigger     = 'enable-big-endian',
-    description = 'Enable big-endian byte order support (default is little-endian)'
+    trigger     = 'use-big-endian',
+    description = 'Use big-endian byte order (default is little-endian)'
 }
 
 newoption {
@@ -12,7 +12,7 @@ solution "cborphine"
     configurations { "Debug", "Release" }
     platforms { "x64", "x32" }
 
-    if _OPTIONS['enable-big-endian'] then
+    if _OPTIONS['use-big-endian'] then
         defines { "CBOR_BIGENDIAN_PLATFORM" }
     end
 
