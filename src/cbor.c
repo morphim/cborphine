@@ -343,14 +343,15 @@ static cbor_bool_t cbor_internal_write_bytes(uint8_t **data, size_t size, unsign
 
 static cbor_bool_t cbor_internal_read_and_check_type(const uint8_t **data, size_t data_size, cbor_token_type_t expected_type, cbor_token_t *token)
 {
-    const uint8_t *end = *data + data_size;
+    const uint8_t *current_pos = *data;
 
-    if (cbor_read_token(data, end, token) == CBOR_FALSE)
+    if (cbor_read_token(&current_pos, current_pos + data_size, token) == CBOR_FALSE)
         return CBOR_FALSE;
 
     if (token->type != expected_type)
         return CBOR_FALSE;
 
+    *data = current_pos;
     return CBOR_TRUE;
 }
 
