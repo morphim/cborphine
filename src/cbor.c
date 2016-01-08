@@ -32,6 +32,12 @@ THE SOFTWARE.
 #define CBOR_GET_MAJOR_TYPE(initial_byte) ((initial_byte) >> 5)
 #define CBOR_GET_MINOR_TYPE(initial_byte) ((initial_byte) & 31)
 
+#ifdef _MSC_VER
+#define CBOR_INLINE static __inline
+#else
+#define CBOR_INLINE static inline
+#endif
+
 static cbor_token_type_t cbor_internal_types_map[] =
 {
     CBOR_TOKEN_TYPE_INT,    /* 0 */
@@ -44,7 +50,7 @@ static cbor_token_type_t cbor_internal_types_map[] =
     CBOR_TOKEN_TYPE_SPECIAL /* 7 */
 };
 
-static uint8_t *cbor_internal_swap_2bytes(uint8_t *dest, const uint8_t *src)
+CBOR_INLINE uint8_t *cbor_internal_swap_2bytes(uint8_t *dest, const uint8_t *src)
 {
 #ifdef CBOR_BIGENDIAN_PLATFORM
     memcpy(dest, src, 2);
@@ -57,7 +63,7 @@ static uint8_t *cbor_internal_swap_2bytes(uint8_t *dest, const uint8_t *src)
     return dest + 2;
 }
 
-static uint8_t *cbor_internal_swap_4bytes(uint8_t *dest, const uint8_t *src)
+CBOR_INLINE uint8_t *cbor_internal_swap_4bytes(uint8_t *dest, const uint8_t *src)
 {
 #ifdef CBOR_BIGENDIAN_PLATFORM
     memcpy(dest, src, 4);
@@ -72,7 +78,7 @@ static uint8_t *cbor_internal_swap_4bytes(uint8_t *dest, const uint8_t *src)
     return dest + 4;
 }
 
-static uint8_t *cbor_internal_swap_8bytes(uint8_t *dest, const uint8_t *src)
+CBOR_INLINE uint8_t *cbor_internal_swap_8bytes(uint8_t *dest, const uint8_t *src)
 {
 #ifdef CBOR_BIGENDIAN_PLATFORM
     memcpy(dest, src, 8);
@@ -82,7 +88,7 @@ static uint8_t *cbor_internal_swap_8bytes(uint8_t *dest, const uint8_t *src)
 #endif
 }
 
-static int cbor_internal_get_width(unsigned int minor_type)
+CBOR_INLINE int cbor_internal_get_width(unsigned int minor_type)
 {
     if (minor_type < 24)
         return 0;
@@ -98,7 +104,7 @@ static int cbor_internal_get_width(unsigned int minor_type)
     return -1;
 }
 
-static cbor_bool_t cbor_internal_read_int_value(unsigned int minor_type, const uint8_t **pos, const uint8_t *end, cbor_token_t *token)
+CBOR_INLINE cbor_bool_t cbor_internal_read_int_value(unsigned int minor_type, const uint8_t **pos, const uint8_t *end, cbor_token_t *token)
 {
     const uint8_t *current_pos = *pos;
     int type_width = cbor_internal_get_width(minor_type);
@@ -163,7 +169,7 @@ static cbor_bool_t cbor_internal_read_int_value(unsigned int minor_type, const u
     return CBOR_FALSE;
 }
 
-static cbor_bool_t cbor_internal_extract_special_value(unsigned int minor_type, const uint8_t **pos, const uint8_t *end, cbor_token_t *token)
+CBOR_INLINE cbor_bool_t cbor_internal_extract_special_value(unsigned int minor_type, const uint8_t **pos, const uint8_t *end, cbor_token_t *token)
 {
     switch (minor_type)
     {
@@ -230,7 +236,7 @@ static cbor_bool_t cbor_internal_extract_special_value(unsigned int minor_type, 
     }
 }
 
-static cbor_bool_t cbor_internal_write_int_value(uint8_t **data, size_t size, unsigned int type, size_t check_bytes, cbor_base_uint_t value)
+CBOR_INLINE cbor_bool_t cbor_internal_write_int_value(uint8_t **data, size_t size, unsigned int type, size_t check_bytes, cbor_base_uint_t value)
 {
     uint8_t *pos = *data;
 
@@ -299,7 +305,7 @@ static cbor_bool_t cbor_internal_write_int_value(uint8_t **data, size_t size, un
 #endif
 }
 
-static cbor_bool_t cbor_internal_write_float_value(uint8_t **data, size_t size, size_t type_length, const uint8_t *value_bytes)
+CBOR_INLINE cbor_bool_t cbor_internal_write_float_value(uint8_t **data, size_t size, size_t type_length, const uint8_t *value_bytes)
 {
     uint8_t *pos = *data;
 
@@ -331,7 +337,7 @@ static cbor_bool_t cbor_internal_write_float_value(uint8_t **data, size_t size, 
     return CBOR_FALSE;
 }
 
-static cbor_bool_t cbor_internal_write_bytes(uint8_t **data, size_t size, unsigned int type, size_t bytes_size, const uint8_t *bytes)
+CBOR_INLINE cbor_bool_t cbor_internal_write_bytes(uint8_t **data, size_t size, unsigned int type, size_t bytes_size, const uint8_t *bytes)
 {
     if (cbor_internal_write_int_value(data, size, type, bytes_size, bytes_size) == CBOR_FALSE)
         return CBOR_FALSE;
@@ -341,7 +347,7 @@ static cbor_bool_t cbor_internal_write_bytes(uint8_t **data, size_t size, unsign
     return CBOR_TRUE;
 }
 
-static cbor_bool_t cbor_internal_read_and_check_type(const uint8_t **data, size_t data_size, cbor_token_type_t expected_type, cbor_token_t *token)
+CBOR_INLINE cbor_bool_t cbor_internal_read_and_check_type(const uint8_t **data, size_t data_size, cbor_token_type_t expected_type, cbor_token_t *token)
 {
     const uint8_t *current_pos = *data;
 
