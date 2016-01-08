@@ -230,38 +230,43 @@ static cbor_bool_t cbor_internal_extract_special_value(unsigned int minor_type, 
     }
 }
 
-static uint8_t *cbor_internal_write_int_value(uint8_t *data, size_t size, unsigned int type, size_t check_bytes, cbor_base_uint_t value)
+static cbor_bool_t cbor_internal_write_int_value(uint8_t **data, size_t size, unsigned int type, size_t check_bytes, cbor_base_uint_t value)
 {
+    uint8_t *pos = *data;
+
     if (value < CBOR_MAX_INJECTED_LIMIT)
     {
         if (size < 1 + check_bytes)
-            return data;
+            return CBOR_FALSE;
 
-        *data++ = CBOR_CREATE_INITIAL_BYTE(type, value);
+        *pos++ = CBOR_CREATE_INITIAL_BYTE(type, value);
 
-        return data;
+        *data = pos;
+        return CBOR_TRUE;
     }
     else if (value < CBOR_MAX_1BYTE_LIMIT)
     {
         if (size < 2 + check_bytes)
-            return data;
+            return CBOR_FALSE;
 
-        *data++ = CBOR_CREATE_INITIAL_BYTE(type, 24);
-        *data++ = (uint8_t) value;
+        *pos++ = CBOR_CREATE_INITIAL_BYTE(type, 24);
+        *pos++ = (uint8_t) value;
 
-        return data;
+        *data = pos;
+        return CBOR_TRUE;
     }
     else if (value < CBOR_MAX_2BYTE_LIMIT)
     {
         uint16_t short_value;
 
         if (size < 3 + check_bytes)
-            return data;
+            return CBOR_FALSE;
 
-        *data++ = CBOR_CREATE_INITIAL_BYTE(type, 25);
+        *pos++ = CBOR_CREATE_INITIAL_BYTE(type, 25);
 
         short_value = (uint16_t)value;
-        return cbor_internal_swap_2bytes(data, (const uint8_t *)&short_value);
+        *data = cbor_internal_swap_2bytes(pos, (const uint8_t *)&short_value);
+        return CBOR_TRUE;
     }
 #ifdef CBOR_INT64_SUPPORT
     else if (value < CBOR_MAX_4BYTE_LIMIT)
@@ -272,62 +277,68 @@ static uint8_t *cbor_internal_write_int_value(uint8_t *data, size_t size, unsign
         uint32_t int_value;
 
         if (size < 5 + check_bytes)
-            return data;
+            return CBOR_FALSE;
 
-        *data++ = CBOR_CREATE_INITIAL_BYTE(type, 26);
+        *pos++ = CBOR_CREATE_INITIAL_BYTE(type, 26);
 
         int_value = (uint32_t)value;
-        return cbor_internal_swap_4bytes(data, (const uint8_t *)&int_value);
+        *data = cbor_internal_swap_4bytes(pos, (const uint8_t *)&int_value);
+        return CBOR_TRUE;
     }
 #ifdef CBOR_INT64_SUPPORT
     else
     {
         if (size < 9 + check_bytes)
-            return data;
+            return CBOR_FALSE;
 
-        *data++ = CBOR_CREATE_INITIAL_BYTE(type, 27);
+        *pos++ = CBOR_CREATE_INITIAL_BYTE(type, 27);
 
-        return cbor_internal_swap_8bytes(data, (const uint8_t *)&value);
+        *data = cbor_internal_swap_8bytes(pos, (const uint8_t *)&value);
+        return CBOR_TRUE;
     }
 #endif
 }
 
-static uint8_t *cbor_internal_write_float_value(uint8_t *data, size_t size, size_t type_length, const uint8_t *value_bytes)
+static cbor_bool_t cbor_internal_write_float_value(uint8_t **data, size_t size, size_t type_length, const uint8_t *value_bytes)
 {
+    uint8_t *pos = *data;
+
     switch (type_length)
     {
     case 2:
         if (size < 3)
-            return data;
+            return CBOR_FALSE;
 
-        *data++ = CBOR_CREATE_INITIAL_BYTE(7, 25);
-        return cbor_internal_swap_2bytes(data, value_bytes);
+        *pos++ = CBOR_CREATE_INITIAL_BYTE(7, 25);
+        *data = cbor_internal_swap_2bytes(pos, value_bytes);
+        return CBOR_TRUE;
     case 4:
         if (size < 5)
-            return data;
+            return CBOR_FALSE;
 
-        *data++ = CBOR_CREATE_INITIAL_BYTE(7, 26);
-        return cbor_internal_swap_4bytes(data, value_bytes);
+        *pos++ = CBOR_CREATE_INITIAL_BYTE(7, 26);
+        *data = cbor_internal_swap_4bytes(pos, value_bytes);
+        return CBOR_TRUE;
     case 8:
         if (size < 9)
-            return data;
+            return CBOR_FALSE;
 
-        *data++ = CBOR_CREATE_INITIAL_BYTE(7, 27);
-        return cbor_internal_swap_8bytes(data, value_bytes);
+        *pos++ = CBOR_CREATE_INITIAL_BYTE(7, 27);
+        *data = cbor_internal_swap_8bytes(pos, value_bytes);
+        return CBOR_TRUE;
     }
 
-    return data;
+    return CBOR_FALSE;
 }
 
-static uint8_t *cbor_internal_write_bytes(uint8_t *data, size_t size, unsigned int type, size_t bytes_size, const uint8_t *bytes)
+static cbor_bool_t cbor_internal_write_bytes(uint8_t **data, size_t size, unsigned int type, size_t bytes_size, const uint8_t *bytes)
 {
-    uint8_t *result = cbor_internal_write_int_value(data, size, type, bytes_size, bytes_size);
-    if (result > data)
-    {
-        memcpy(result, bytes, bytes_size);
-        return result + bytes_size;
-    }
-    return result;
+    if (cbor_internal_write_int_value(data, size, type, bytes_size, bytes_size) == CBOR_FALSE)
+        return CBOR_FALSE;
+
+    memcpy(*data, bytes, bytes_size);
+    *data += bytes_size;
+    return CBOR_TRUE;
 }
 
 static cbor_bool_t cbor_internal_read_and_check_type(const uint8_t **data, size_t data_size, cbor_token_type_t expected_type, cbor_token_t *token)
@@ -417,12 +428,12 @@ cbor_bool_t cbor_read_token(const uint8_t **data, const uint8_t *end, cbor_token
     }
 }
 
-uint8_t *cbor_write_uint(uint8_t *data, size_t size, cbor_base_uint_t value)
+cbor_bool_t cbor_write_uint(uint8_t **data, size_t size, cbor_base_uint_t value)
 {
     return cbor_internal_write_int_value(data, size, 0, 0, value);
 }
 
-uint8_t *cbor_write_int(uint8_t *data, size_t size, cbor_base_int_t value)
+cbor_bool_t cbor_write_int(uint8_t **data, size_t size, cbor_base_int_t value)
 {
     if (value < 0)
         return cbor_internal_write_int_value(data, size, 1, 0, (cbor_base_uint_t)(-value) - 1);
@@ -430,17 +441,17 @@ uint8_t *cbor_write_int(uint8_t *data, size_t size, cbor_base_int_t value)
         return cbor_internal_write_int_value(data, size, 0, 0, (cbor_base_uint_t)(value));
 }
 
-uint8_t *cbor_write_float(uint8_t *data, size_t size, float value)
+cbor_bool_t cbor_write_float(uint8_t **data, size_t size, float value)
 {
     return cbor_internal_write_float_value(data, size, sizeof(value), (const uint8_t *)&value);
 }
 
-uint8_t *cbor_write_double(uint8_t *data, size_t size, double value)
+cbor_bool_t cbor_write_double(uint8_t **data, size_t size, double value)
 {
     return cbor_internal_write_float_value(data, size, sizeof(value), (const uint8_t *)&value);
 }
 
-uint8_t *cbor_write_boolean(uint8_t *data, size_t size, cbor_bool_t value)
+cbor_bool_t cbor_write_boolean(uint8_t **data, size_t size, cbor_bool_t value)
 {
     if (value)
         return cbor_internal_write_int_value(data, size, 7, 0, 21); /* 21 is true */
@@ -448,47 +459,47 @@ uint8_t *cbor_write_boolean(uint8_t *data, size_t size, cbor_bool_t value)
         return cbor_internal_write_int_value(data, size, 7, 0, 20); /* 20 is false */
 }
 
-uint8_t *cbor_write_null(uint8_t *data, size_t size)
+cbor_bool_t cbor_write_null(uint8_t **data, size_t size)
 {
     return cbor_internal_write_int_value(data, size, 7, 0, 22); /* 22 is null */
 }
 
-uint8_t *cbor_write_undefined(uint8_t *data, size_t size)
+cbor_bool_t cbor_write_undefined(uint8_t **data, size_t size)
 {
     return cbor_internal_write_int_value(data, size, 7, 0, 23); /* 23 is undefined */
 }
 
-uint8_t *cbor_write_string_with_len(uint8_t *data, size_t size, const char *str, size_t str_length)
+cbor_bool_t cbor_write_string_with_len(uint8_t **data, size_t size, const char *str, size_t str_length)
 {
     return cbor_internal_write_bytes(data, size, 3, str_length, (uint8_t *) str);
 }
 
-uint8_t *cbor_write_string(uint8_t *data, size_t size, const char *str)
+cbor_bool_t cbor_write_string(uint8_t **data, size_t size, const char *str)
 {
     return cbor_internal_write_bytes(data, size, 3, strlen(str), (uint8_t *) str);
 }
 
-uint8_t *cbor_write_bytes(uint8_t *data, size_t size, const uint8_t *bytes, size_t bytes_size)
+cbor_bool_t cbor_write_bytes(uint8_t **data, size_t size, const uint8_t *bytes, size_t bytes_size)
 {
     return cbor_internal_write_bytes(data, size, 2, bytes_size, bytes);
 }
 
-uint8_t *cbor_write_array(uint8_t *data, size_t size, cbor_base_uint_t array_size)
+cbor_bool_t cbor_write_array(uint8_t **data, size_t size, cbor_base_uint_t array_size)
 {
     return cbor_internal_write_int_value(data, size, 4, 0, array_size);
 }
 
-uint8_t *cbor_write_map(uint8_t *data, size_t size, cbor_base_uint_t map_size)
+cbor_bool_t cbor_write_map(uint8_t **data, size_t size, cbor_base_uint_t map_size)
 {
     return cbor_internal_write_int_value(data, size, 5, 0, map_size);
 }
 
-uint8_t *cbor_write_tag(uint8_t *data, size_t size, cbor_base_uint_t tag)
+cbor_bool_t cbor_write_tag(uint8_t **data, size_t size, cbor_base_uint_t tag)
 {
     return cbor_internal_write_int_value(data, size, 6, 0, tag);
 }
 
-uint8_t *cbor_write_special(uint8_t *data, size_t size, uint8_t special)
+cbor_bool_t cbor_write_special(uint8_t **data, size_t size, uint8_t special)
 {
     return cbor_internal_write_int_value(data, size, 7, 0, special);
 }

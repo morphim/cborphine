@@ -21,6 +21,7 @@ THE SOFTWARE.
 */
 
 #include <stdio.h>
+#include <assert.h>
 #include "cbor.h"
 
 int main(int argc, char **argv)
@@ -31,19 +32,20 @@ int main(int argc, char **argv)
     const uint8_t *ptr = buffer;
     cbor_token_t token;
 
-    data = cbor_write_float(data, size - (data - buffer), 3.4028234663852886e+38);
-    data = cbor_write_int(data, size - (data - buffer), 500);
-    data = cbor_write_boolean(data, size - (data - buffer), CBOR_TRUE);
-    data = cbor_write_boolean(data, size - (data - buffer), CBOR_FALSE);
-    data = cbor_write_string(data, size - (data - buffer), "hello");
-    data = cbor_write_int(data, size - (data - buffer), -12345);
-    data = cbor_write_array(data, size - (data - buffer), 5);
-    data = cbor_write_int(data, size - (data - buffer), 123);
-    data = cbor_write_string(data, size - (data - buffer), "world");
-    data = cbor_write_int(data, size - (data - buffer), 2147483647);
-    data = cbor_write_string(data, size - (data - buffer), "!");
-    data = cbor_write_null(data, size - (data - buffer));
-    data = cbor_write_undefined(data, size - (data - buffer));
+    assert(cbor_write_float(&data, size - (data - buffer), 3.4028234663852886e+38));
+    assert(cbor_write_int(&data, size - (data - buffer), 500));
+    assert(cbor_write_boolean(&data, size - (data - buffer), CBOR_TRUE));
+    assert(cbor_write_boolean(&data, size - (data - buffer), CBOR_FALSE));
+    assert(cbor_write_string(&data, size - (data - buffer), "hello"));
+    assert(cbor_write_double(&data, size - (data - buffer), 2.4028234663852886e+38));
+    assert(cbor_write_int(&data, size - (data - buffer), -12345));
+    assert(cbor_write_array(&data, size - (data - buffer), 5));
+    assert(cbor_write_int(&data, size - (data - buffer), 123));
+    assert(cbor_write_string(&data, size - (data - buffer), "world"));
+    assert(cbor_write_int(&data, size - (data - buffer), 2147483647));
+    assert(cbor_write_string(&data, size - (data - buffer), "!"));
+    assert(cbor_write_null(&data, size - (data - buffer)));
+    assert(cbor_write_undefined(&data, size - (data - buffer)));
 
     for (ptr = buffer; ptr < data; ++ptr)
         printf("%02X", *ptr);
