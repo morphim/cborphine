@@ -106,7 +106,7 @@ static cbor_bool_t cbor_internal_read_int_value(unsigned int minor_type, const u
     if (type_width < 0)
     {
         token->type = CBOR_TOKEN_TYPE_ERROR;
-        token->error_value = "invalid length";
+        token->error_value = "invalid type width";
         return CBOR_FALSE;
     }
 
@@ -349,7 +349,11 @@ static cbor_bool_t cbor_internal_read_and_check_type(const uint8_t **data, size_
         return CBOR_FALSE;
 
     if (token->type != expected_type)
+    {
+        token->type = CBOR_TOKEN_TYPE_ERROR;
+        token->error_value = "invalid data type";
         return CBOR_FALSE;
+    }
 
     *data = current_pos;
     return CBOR_TRUE;
