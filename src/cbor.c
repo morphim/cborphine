@@ -447,7 +447,7 @@ cbor_bool_t cbor_write_uint(uint8_t **data, size_t size, cbor_base_uint_t value)
 cbor_bool_t cbor_write_int(uint8_t **data, size_t size, cbor_base_int_t value)
 {
     if (value < 0)
-        return cbor_internal_write_int_value(data, size, 1, 0, (cbor_base_uint_t)(-value) - 1);
+        return cbor_internal_write_int_value(data, size, 1, 0, (cbor_base_uint_t)(-(value + 1)));
     else
         return cbor_internal_write_int_value(data, size, 0, 0, (cbor_base_uint_t)(value));
 }
@@ -532,7 +532,7 @@ cbor_bool_t cbor_read_int(const uint8_t **data, size_t data_size, cbor_base_int_
         return CBOR_FALSE;
 
     if (token.sign < 0)
-        *value = -((cbor_base_int_t)token.int_value);
+        *value = -((cbor_base_int_t)(token.int_value - 1)) - 1;
     else
         *value = token.int_value;
 
