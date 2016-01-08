@@ -58,7 +58,7 @@ project "cborphine-tests"
     files { "**.h", "test/**.c" }
 
     filter "configurations:Debug"
-        defines { "DEBUG" }
+        defines { "_DEBUG" }
         flags { "Symbols" }
 
     filter "configurations:Release"
