@@ -32,7 +32,8 @@ THE SOFTWARE.
 typedef enum
 {
     CBOR_TOKEN_TYPE_END,
-    CBOR_TOKEN_TYPE_INT,
+    CBOR_TOKEN_TYPE_PINT, /* positive integer */
+    CBOR_TOKEN_TYPE_NINT, /* negative integer */
     CBOR_TOKEN_TYPE_ARRAY,
     CBOR_TOKEN_TYPE_STRING,
     CBOR_TOKEN_TYPE_BYTES,
@@ -62,8 +63,8 @@ typedef unsigned int cbor_bool_t;
 typedef struct
 {
     cbor_token_type_t type;
-    int sign;                   /* used with CBOR_TOKEN_TYPE_INT type only */
-    cbor_base_uint_t int_value; /* used as a simple value or length of data */
+    cbor_base_uint_t pint_value; /* used as a simple value or length of data */
+    cbor_base_int_t nint_value; /* used with CBOR_TOKEN_TYPE_NINT type only */
     double float_value;         /* used with CBOR_TOKEN_TYPE_FLOAT type only */
     const uint8_t *bytes_value; /* used with CBOR_TOKEN_TYPE_BYTES and CBOR_TOKEN_TYPE_STRING types */
     const char *error_value;    /* used with CBOR_TOKEN_TYPE_ERROR type only */

@@ -40,8 +40,8 @@ THE SOFTWARE.
 
 static cbor_token_type_t cbor_internal_types_map[] =
 {
-    CBOR_TOKEN_TYPE_INT,    /* 0 */
-    CBOR_TOKEN_TYPE_INT,    /* 1 */
+    CBOR_TOKEN_TYPE_PINT,   /* 0 */
+    CBOR_TOKEN_TYPE_NINT,   /* 1 */
     CBOR_TOKEN_TYPE_BYTES,  /* 2 */
     CBOR_TOKEN_TYPE_STRING, /* 3 */
     CBOR_TOKEN_TYPE_ARRAY,  /* 4 */
@@ -126,17 +126,17 @@ CBOR_INLINE cbor_bool_t cbor_internal_read_int_value(unsigned int minor_type, co
     switch (type_width)
     {
     case 0:
-        token->int_value = minor_type;
+        token->pint_value = minor_type;
         return CBOR_TRUE;
     case 1:
-        token->int_value = *current_pos;
+        token->pint_value = *current_pos;
         *pos = current_pos + 1;
         return CBOR_TRUE;
     case 2:
         {
             uint16_t short_value;
             cbor_internal_swap_2bytes((uint8_t *)&short_value, current_pos);
-            token->int_value = short_value;
+            token->pint_value = short_value;
             *pos = current_pos + 2;
             return CBOR_TRUE;
         }
@@ -144,7 +144,7 @@ CBOR_INLINE cbor_bool_t cbor_internal_read_int_value(unsigned int minor_type, co
         {
             uint32_t int_value;
             cbor_internal_swap_4bytes((uint8_t *)&int_value, current_pos);
-            token->int_value = int_value;
+            token->pint_value = int_value;
             *pos = current_pos + 4;
             return CBOR_TRUE;
         }
@@ -153,7 +153,7 @@ CBOR_INLINE cbor_bool_t cbor_internal_read_int_value(unsigned int minor_type, co
         {
             cbor_base_uint_t value;
             cbor_internal_swap_8bytes((uint8_t *)&value, current_pos);
-            token->int_value = value;
+            token->pint_value = value;
             *pos = current_pos + 8;
             return CBOR_TRUE;
         }
@@ -175,11 +175,11 @@ CBOR_INLINE cbor_bool_t cbor_internal_extract_special_value(unsigned int minor_t
     {
     case 20: /* false */
         token->type = CBOR_TOKEN_TYPE_BOOLEAN;
-        token->int_value = CBOR_FALSE;
+        token->pint_value = CBOR_FALSE;
         return CBOR_TRUE;
     case 21: /* true */
         token->type = CBOR_TOKEN_TYPE_BOOLEAN;
-        token->int_value = CBOR_TRUE;
+        token->pint_value = CBOR_TRUE;
         return CBOR_TRUE;
     case 22: /* null */
         token->type = CBOR_TOKEN_TYPE_NULL;
@@ -347,14 +347,15 @@ CBOR_INLINE cbor_bool_t cbor_internal_write_bytes(uint8_t **data, size_t size, u
     return CBOR_TRUE;
 }
 
-CBOR_INLINE cbor_bool_t cbor_internal_read_and_check_type(const uint8_t **data, size_t data_size, cbor_token_type_t expected_type, cbor_token_t *token)
+CBOR_INLINE cbor_bool_t cbor_internal_read_and_check_type(const uint8_t **data, size_t data_size,
+    cbor_token_type_t expected_type1, cbor_token_type_t expected_type2, cbor_token_t *token)
 {
     const uint8_t *current_pos = *data;
 
     if (cbor_read_token(&current_pos, current_pos + data_size, token) == CBOR_FALSE)
         return CBOR_FALSE;
 
-    if (token->type != expected_type)
+    if (token->type != expected_type1 && token->type != expected_type2)
     {
         token->type = CBOR_TOKEN_TYPE_ERROR;
         token->error_value = "invalid data type";
@@ -388,17 +389,15 @@ cbor_bool_t cbor_read_token(const uint8_t **data, const uint8_t *end, cbor_token
         if (cbor_internal_read_int_value(minor_type, &current_pos, end, token) == CBOR_FALSE)
             return CBOR_FALSE;
 
-        token->type = CBOR_TOKEN_TYPE_INT;
-        token->sign = 1;
+        token->type = CBOR_TOKEN_TYPE_PINT;
         *data = current_pos;
         return CBOR_TRUE;
     case 1: /* negative integer */
         if (cbor_internal_read_int_value(minor_type, &current_pos, end, token) == CBOR_FALSE)
             return CBOR_FALSE;
 
-        token->type = CBOR_TOKEN_TYPE_INT;
-        token->int_value = token->int_value + 1;
-        token->sign = -1;
+        token->type = CBOR_TOKEN_TYPE_NINT;
+        token->nint_value = -((cbor_base_int_t)(token->pint_value)) - 1;
         *data = current_pos;
         return CBOR_TRUE;
     case 2: /* bytes */
@@ -406,7 +405,7 @@ cbor_bool_t cbor_read_token(const uint8_t **data, const uint8_t *end, cbor_token
         if (cbor_internal_read_int_value(minor_type, &current_pos, end, token) == CBOR_FALSE)
             return CBOR_FALSE;
 
-        if ((size_t)(end - current_pos) < token->int_value)
+        if ((size_t)(end - current_pos) < token->pint_value)
         {
             token->type = CBOR_TOKEN_TYPE_ERROR;
             token->error_value = "insufficient data";
@@ -415,7 +414,7 @@ cbor_bool_t cbor_read_token(const uint8_t **data, const uint8_t *end, cbor_token
 
         token->type = cbor_internal_types_map[major_type];
         token->bytes_value = current_pos;
-        *data = current_pos + token->int_value;
+        *data = current_pos + token->pint_value;
         return CBOR_TRUE;
     case 4: /* array */
     case 5: /* map */
@@ -518,23 +517,28 @@ cbor_bool_t cbor_write_special(uint8_t **data, size_t size, uint8_t special)
 cbor_bool_t cbor_read_uint(const uint8_t **data, size_t data_size, cbor_base_uint_t *value)
 {
     cbor_token_t token;
-    if (cbor_internal_read_and_check_type(data, data_size, CBOR_TOKEN_TYPE_INT, &token) == CBOR_FALSE)
+    if (cbor_internal_read_and_check_type(data, data_size, CBOR_TOKEN_TYPE_PINT, CBOR_TOKEN_TYPE_PINT, &token) == CBOR_FALSE)
         return CBOR_FALSE;
 
-    *value = token.int_value;
+    *value = token.pint_value;
     return CBOR_TRUE;
 }
 
 cbor_bool_t cbor_read_int(const uint8_t **data, size_t data_size, cbor_base_int_t *value)
 {
     cbor_token_t token;
-    if (cbor_internal_read_and_check_type(data, data_size, CBOR_TOKEN_TYPE_INT, &token) == CBOR_FALSE)
+    if (cbor_internal_read_and_check_type(data, data_size, CBOR_TOKEN_TYPE_PINT, CBOR_TOKEN_TYPE_NINT, &token) == CBOR_FALSE)
         return CBOR_FALSE;
 
-    if (token.sign < 0)
-        *value = -((cbor_base_int_t)(token.int_value - 1)) - 1;
-    else
-        *value = token.int_value;
+    switch (token.type)
+    {
+    case CBOR_TOKEN_TYPE_PINT:
+        *value = token.pint_value;
+        break;
+    case CBOR_TOKEN_TYPE_NINT:
+        *value = token.nint_value;
+        break;
+    }
 
     return CBOR_TRUE;
 }
@@ -542,7 +546,7 @@ cbor_bool_t cbor_read_int(const uint8_t **data, size_t data_size, cbor_base_int_
 cbor_bool_t cbor_read_float(const uint8_t **data, size_t data_size, float *value)
 {
     cbor_token_t token;
-    if (cbor_internal_read_and_check_type(data, data_size, CBOR_TOKEN_TYPE_FLOAT, &token) == CBOR_FALSE)
+    if (cbor_internal_read_and_check_type(data, data_size, CBOR_TOKEN_TYPE_FLOAT, CBOR_TOKEN_TYPE_FLOAT, &token) == CBOR_FALSE)
         return CBOR_FALSE;
 
     *value = (float)token.float_value;
@@ -552,7 +556,7 @@ cbor_bool_t cbor_read_float(const uint8_t **data, size_t data_size, float *value
 cbor_bool_t cbor_read_double(const uint8_t **data, size_t data_size, double *value)
 {
     cbor_token_t token;
-    if (cbor_internal_read_and_check_type(data, data_size, CBOR_TOKEN_TYPE_FLOAT, &token) == CBOR_FALSE)
+    if (cbor_internal_read_and_check_type(data, data_size, CBOR_TOKEN_TYPE_FLOAT, CBOR_TOKEN_TYPE_FLOAT, &token) == CBOR_FALSE)
         return CBOR_FALSE;
 
     *value = token.float_value;
@@ -562,17 +566,17 @@ cbor_bool_t cbor_read_double(const uint8_t **data, size_t data_size, double *val
 cbor_bool_t cbor_read_boolean(const uint8_t **data, size_t data_size, cbor_bool_t *value)
 {
     cbor_token_t token;
-    if (cbor_internal_read_and_check_type(data, data_size, CBOR_TOKEN_TYPE_BOOLEAN, &token) == CBOR_FALSE)
+    if (cbor_internal_read_and_check_type(data, data_size, CBOR_TOKEN_TYPE_BOOLEAN, CBOR_TOKEN_TYPE_BOOLEAN, &token) == CBOR_FALSE)
         return CBOR_FALSE;
 
-    *value = (cbor_bool_t)token.int_value;
+    *value = (cbor_bool_t)token.pint_value;
     return CBOR_TRUE;
 }
 
 cbor_bool_t cbor_read_null(const uint8_t **data, size_t data_size)
 {
     cbor_token_t token;
-    if (cbor_internal_read_and_check_type(data, data_size, CBOR_TOKEN_TYPE_NULL, &token) == CBOR_FALSE)
+    if (cbor_internal_read_and_check_type(data, data_size, CBOR_TOKEN_TYPE_NULL, CBOR_TOKEN_TYPE_NULL, &token) == CBOR_FALSE)
         return CBOR_FALSE;
     return CBOR_TRUE;
 }
@@ -580,7 +584,7 @@ cbor_bool_t cbor_read_null(const uint8_t **data, size_t data_size)
 cbor_bool_t cbor_read_undefined(const uint8_t **data, size_t data_size)
 {
     cbor_token_t token;
-    if (cbor_internal_read_and_check_type(data, data_size, CBOR_TOKEN_TYPE_UNDEFINED, &token) == CBOR_FALSE)
+    if (cbor_internal_read_and_check_type(data, data_size, CBOR_TOKEN_TYPE_UNDEFINED, CBOR_TOKEN_TYPE_UNDEFINED, &token) == CBOR_FALSE)
         return CBOR_FALSE;
     return CBOR_TRUE;
 }
@@ -588,10 +592,10 @@ cbor_bool_t cbor_read_undefined(const uint8_t **data, size_t data_size)
 cbor_bool_t cbor_get_string_length(const uint8_t *data, size_t data_size, size_t *string_length)
 {
     cbor_token_t token;
-    if (cbor_internal_read_and_check_type(&data, data_size, CBOR_TOKEN_TYPE_STRING, &token) == CBOR_FALSE)
+    if (cbor_internal_read_and_check_type(&data, data_size, CBOR_TOKEN_TYPE_STRING, CBOR_TOKEN_TYPE_STRING, &token) == CBOR_FALSE)
         return CBOR_FALSE;
 
-    *string_length = (size_t)token.int_value;
+    *string_length = (size_t)token.pint_value;
     return CBOR_TRUE;
 }
 
@@ -599,10 +603,10 @@ cbor_bool_t cbor_read_string(const uint8_t **data, size_t data_size, char *buf, 
 {
     cbor_token_t token;
     size_t string_length;
-    if (cbor_internal_read_and_check_type(data, data_size, CBOR_TOKEN_TYPE_STRING, &token) == CBOR_FALSE)
+    if (cbor_internal_read_and_check_type(data, data_size, CBOR_TOKEN_TYPE_STRING, CBOR_TOKEN_TYPE_STRING, &token) == CBOR_FALSE)
         return CBOR_FALSE;
 
-    string_length = (size_t)token.int_value;
+    string_length = (size_t)token.pint_value;
     if (buf_size <= string_length) /* including null-terminating char */
         return CBOR_FALSE;
 
@@ -615,10 +619,10 @@ cbor_bool_t cbor_read_raw_string(const uint8_t **data, size_t data_size, char *b
 {
     cbor_token_t token;
     size_t string_length;
-    if (cbor_internal_read_and_check_type(data, data_size, CBOR_TOKEN_TYPE_STRING, &token) == CBOR_FALSE)
+    if (cbor_internal_read_and_check_type(data, data_size, CBOR_TOKEN_TYPE_STRING, CBOR_TOKEN_TYPE_STRING, &token) == CBOR_FALSE)
         return CBOR_FALSE;
 
-    string_length = (size_t)token.int_value;
+    string_length = (size_t)token.pint_value;
     if (buf_size < string_length) /* without null-terminating char */
         return CBOR_FALSE;
 
@@ -629,10 +633,10 @@ cbor_bool_t cbor_read_raw_string(const uint8_t **data, size_t data_size, char *b
 cbor_bool_t cbor_get_bytes_size(const uint8_t *data, size_t data_size, size_t *bytes_size)
 {
     cbor_token_t token;
-    if (cbor_internal_read_and_check_type(&data, data_size, CBOR_TOKEN_TYPE_BYTES, &token) == CBOR_FALSE)
+    if (cbor_internal_read_and_check_type(&data, data_size, CBOR_TOKEN_TYPE_BYTES, CBOR_TOKEN_TYPE_BYTES, &token) == CBOR_FALSE)
         return CBOR_FALSE;
 
-    *bytes_size = (size_t)token.int_value;
+    *bytes_size = (size_t)token.pint_value;
     return CBOR_TRUE;
 }
 
@@ -640,10 +644,10 @@ cbor_bool_t cbor_read_bytes(const uint8_t **data, size_t data_size, uint8_t *buf
 {
     cbor_token_t token;
     size_t bytes_size;
-    if (cbor_internal_read_and_check_type(data, data_size, CBOR_TOKEN_TYPE_BYTES, &token) == CBOR_FALSE)
+    if (cbor_internal_read_and_check_type(data, data_size, CBOR_TOKEN_TYPE_BYTES, CBOR_TOKEN_TYPE_BYTES, &token) == CBOR_FALSE)
         return CBOR_FALSE;
 
-    bytes_size = (size_t)token.int_value;
+    bytes_size = (size_t)token.pint_value;
     if (buf_size < bytes_size)
         return CBOR_FALSE;
 
@@ -654,39 +658,39 @@ cbor_bool_t cbor_read_bytes(const uint8_t **data, size_t data_size, uint8_t *buf
 cbor_bool_t cbor_read_array(const uint8_t **data, size_t data_size, cbor_base_uint_t *array_size)
 {
     cbor_token_t token;
-    if (cbor_internal_read_and_check_type(data, data_size, CBOR_TOKEN_TYPE_ARRAY, &token) == CBOR_FALSE)
+    if (cbor_internal_read_and_check_type(data, data_size, CBOR_TOKEN_TYPE_ARRAY, CBOR_TOKEN_TYPE_ARRAY, &token) == CBOR_FALSE)
         return CBOR_FALSE;
 
-    *array_size = token.int_value;
+    *array_size = token.pint_value;
     return CBOR_TRUE;
 }
 
 cbor_bool_t cbor_read_map(const uint8_t **data, size_t data_size, cbor_base_uint_t *map_size)
 {
     cbor_token_t token;
-    if (cbor_internal_read_and_check_type(data, data_size, CBOR_TOKEN_TYPE_MAP, &token) == CBOR_FALSE)
+    if (cbor_internal_read_and_check_type(data, data_size, CBOR_TOKEN_TYPE_MAP, CBOR_TOKEN_TYPE_MAP, &token) == CBOR_FALSE)
         return CBOR_FALSE;
 
-    *map_size = token.int_value;
+    *map_size = token.pint_value;
     return CBOR_TRUE;
 }
 
 cbor_bool_t cbor_read_tag(const uint8_t **data, size_t data_size, cbor_base_uint_t *value)
 {
     cbor_token_t token;
-    if (cbor_internal_read_and_check_type(data, data_size, CBOR_TOKEN_TYPE_TAG, &token) == CBOR_FALSE)
+    if (cbor_internal_read_and_check_type(data, data_size, CBOR_TOKEN_TYPE_TAG, CBOR_TOKEN_TYPE_TAG, &token) == CBOR_FALSE)
         return CBOR_FALSE;
 
-    *value = token.int_value;
+    *value = token.pint_value;
     return CBOR_TRUE;
 }
 
 cbor_bool_t cbor_read_special(const uint8_t **data, size_t data_size, uint8_t *value)
 {
     cbor_token_t token;
-    if (cbor_internal_read_and_check_type(data, data_size, CBOR_TOKEN_TYPE_INT, &token) == CBOR_FALSE)
+    if (cbor_internal_read_and_check_type(data, data_size, CBOR_TOKEN_TYPE_SPECIAL, CBOR_TOKEN_TYPE_SPECIAL, &token) == CBOR_FALSE)
         return CBOR_FALSE;
 
-    *value = (uint8_t)token.int_value;
+    *value = (uint8_t)token.pint_value;
     return CBOR_TRUE;
 }

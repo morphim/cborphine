@@ -65,26 +65,29 @@ int main(int argc, char **argv)
 
         switch (token.type)
         {
-        case CBOR_TOKEN_TYPE_INT:
-            printf("int %s%llu\n", token.sign < 0 ? "-" : "", token.int_value);
+        case CBOR_TOKEN_TYPE_PINT:
+            printf("int %llu\n", token.pint_value);
+            break;
+        case CBOR_TOKEN_TYPE_NINT:
+            printf("int %lli\n", token.nint_value);
             break;
         case CBOR_TOKEN_TYPE_FLOAT:
             printf("float %f\n", token.float_value);
             break;
         case CBOR_TOKEN_TYPE_ARRAY:
-            printf("array length %llu\n", token.int_value);
+            printf("array length %llu\n", token.pint_value);
             break;
         case CBOR_TOKEN_TYPE_MAP:
-            printf("map length %llu\n", token.int_value);
+            printf("map length %llu\n", token.pint_value);
             break;
         case CBOR_TOKEN_TYPE_TAG:
-            printf("tag %llu\n", token.int_value);
+            printf("tag %llu\n", token.pint_value);
             break;
         case CBOR_TOKEN_TYPE_SPECIAL:
-            printf("special %llu\n", token.int_value);
+            printf("special %llu\n", token.pint_value);
             break;
         case CBOR_TOKEN_TYPE_BOOLEAN:
-            printf("boolean %s\n", token.int_value > 0 ? "true" : "false");
+            printf("boolean %s\n", token.pint_value > 0 ? "true" : "false");
             break;
         case CBOR_TOKEN_TYPE_NULL:
             printf("null\n");
@@ -93,10 +96,10 @@ int main(int argc, char **argv)
             printf("undefined\n");
             break;
         case CBOR_TOKEN_TYPE_STRING:
-            printf("string '%.*s'\n", (int)token.int_value, (const char *)token.bytes_value);
+            printf("string '%.*s'\n", (int)token.pint_value, (const char *)token.bytes_value);
             break;
         case CBOR_TOKEN_TYPE_BYTES:
-            printf("bytes size %llu\n", token.int_value);
+            printf("bytes size %llu\n", token.pint_value);
             break;
         }
     }
