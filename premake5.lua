@@ -37,7 +37,7 @@ project "cborphine"
     files { "**.h", "src/**.c" }
 
     filter "configurations:Debug"
-        defines { "DEBUG" }
+        defines { "_DEBUG" }
 
         flags { 
             "Symbols",
