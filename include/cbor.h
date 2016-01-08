@@ -74,10 +74,10 @@ extern "C"
 {
 #endif
 
-const uint8_t *cbor_read_token(const uint8_t *data, const uint8_t *end, cbor_token_t *token);
+cbor_bool_t cbor_read_token(const uint8_t **data, const uint8_t *end, cbor_token_t *token);
 
-uint8_t *cbor_write_pint(uint8_t *data, size_t size, cbor_base_uint_t value);
-uint8_t *cbor_write_nint(uint8_t *data, size_t size, cbor_base_uint_t value);
+/* write data */
+
 uint8_t *cbor_write_uint(uint8_t *data, size_t size, cbor_base_uint_t value);
 uint8_t *cbor_write_int(uint8_t *data, size_t size, cbor_base_int_t value);
 
@@ -96,6 +96,29 @@ uint8_t *cbor_write_array(uint8_t *data, size_t size, cbor_base_uint_t array_siz
 uint8_t *cbor_write_map(uint8_t *data, size_t size, cbor_base_uint_t map_size);
 uint8_t *cbor_write_tag(uint8_t *data, size_t size, cbor_base_uint_t tag);
 uint8_t *cbor_write_special(uint8_t *data, size_t size, uint8_t special);
+
+/* read data */
+
+cbor_bool_t cbor_read_uint(const uint8_t **data, size_t data_size, cbor_base_uint_t *value);
+cbor_bool_t cbor_read_int(const uint8_t **data, size_t data_size, cbor_base_int_t *value);
+
+cbor_bool_t cbor_read_float(const uint8_t **data, size_t data_size, float *value);
+cbor_bool_t cbor_read_double(const uint8_t **data, size_t data_size, double *value);
+
+cbor_bool_t cbor_read_boolean(const uint8_t **data, size_t data_size, cbor_bool_t *value);
+cbor_bool_t cbor_read_null(const uint8_t **data, size_t data_size);
+cbor_bool_t cbor_read_undefined(const uint8_t **data, size_t data_size);
+
+cbor_bool_t cbor_get_string_length(const uint8_t *data, size_t data_size, size_t *string_length);
+cbor_bool_t cbor_read_string(const uint8_t **data, size_t data_size, char *buf, size_t buf_size);
+cbor_bool_t cbor_read_raw_string(const uint8_t **data, size_t data_size, char *buf, size_t buf_size);
+cbor_bool_t cbor_get_bytes_size(const uint8_t *data, size_t data_size, size_t *bytes_size);
+cbor_bool_t cbor_read_bytes(const uint8_t **data, size_t data_size, uint8_t *buf, size_t buf_size);
+
+cbor_bool_t cbor_read_array(const uint8_t **data, size_t data_size, cbor_base_uint_t *array_size);
+cbor_bool_t cbor_read_map(const uint8_t **data, size_t data_size, cbor_base_uint_t *map_size);
+cbor_bool_t cbor_read_tag(const uint8_t **data, size_t data_size, cbor_base_uint_t *tag);
+cbor_bool_t cbor_read_special(const uint8_t **data, size_t data_size, uint8_t *special);
 
 #ifdef __cplusplus
 }

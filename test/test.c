@@ -31,19 +31,19 @@ int main(int argc, char **argv)
     const uint8_t *ptr = buffer;
     cbor_token_t token;
 
-    data = cbor_write_float(data, size, 3.4028234663852886e+38);
-    data = cbor_write_int(data, size, 500);
-    data = cbor_write_boolean(data, size, CBOR_TRUE);
-    data = cbor_write_boolean(data, size, CBOR_FALSE);
-    data = cbor_write_string(data, size, "hello");
-    data = cbor_write_int(data, size, -12345);
-    data = cbor_write_array(data, size, 5);
-    data = cbor_write_int(data, size, 123);
-    data = cbor_write_string(data, size, "world");
-    data = cbor_write_int(data, size, 2147483647);
-    data = cbor_write_string(data, size, "!");
-    data = cbor_write_null(data, size);
-    data = cbor_write_undefined(data, size);
+    data = cbor_write_float(data, size - (data - buffer), 3.4028234663852886e+38);
+    data = cbor_write_int(data, size - (data - buffer), 500);
+    data = cbor_write_boolean(data, size - (data - buffer), CBOR_TRUE);
+    data = cbor_write_boolean(data, size - (data - buffer), CBOR_FALSE);
+    data = cbor_write_string(data, size - (data - buffer), "hello");
+    data = cbor_write_int(data, size - (data - buffer), -12345);
+    data = cbor_write_array(data, size - (data - buffer), 5);
+    data = cbor_write_int(data, size - (data - buffer), 123);
+    data = cbor_write_string(data, size - (data - buffer), "world");
+    data = cbor_write_int(data, size - (data - buffer), 2147483647);
+    data = cbor_write_string(data, size - (data - buffer), "!");
+    data = cbor_write_null(data, size - (data - buffer));
+    data = cbor_write_undefined(data, size - (data - buffer));
 
     for (ptr = buffer; ptr < data; ++ptr)
         printf("%02X", *ptr);
@@ -52,16 +52,14 @@ int main(int argc, char **argv)
     ptr = buffer;
     while (1)
     {
-        ptr = cbor_read_token(ptr, data, &token);
-
-        if (token.type == CBOR_TOKEN_TYPE_END)
-            break;
-
-        if (token.type == CBOR_TOKEN_TYPE_ERROR)
+        if (cbor_read_token(&ptr, data, &token) == CBOR_FALSE)
         {
             printf("ERROR: %s\n", token.error_value);
             break;
         }
+
+        if (token.type == CBOR_TOKEN_TYPE_END)
+            break;
 
         switch (token.type)
         {
@@ -81,7 +79,7 @@ int main(int argc, char **argv)
             printf("tag %llu\n", token.int_value);
             break;
         case CBOR_TOKEN_TYPE_SPECIAL:
-            printf("special %u\n", token.int_value);
+            printf("special %llu\n", token.int_value);
             break;
         case CBOR_TOKEN_TYPE_BOOLEAN:
             printf("boolean %s\n", token.int_value > 0 ? "true" : "false");
