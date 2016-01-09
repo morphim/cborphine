@@ -63,19 +63,44 @@ typedef unsigned int cbor_bool_t;
 typedef struct
 {
     cbor_token_type_t type;
-    cbor_base_uint_t pint_value; /* used as a simple value or length of data */
-    cbor_base_int_t nint_value; /* used with CBOR_TOKEN_TYPE_NINT type only */
+    const char *error_message;
+    /* read options */
+    const uint8_t *pos;
+    const uint8_t *end;
+    cbor_bool_t next_on_read;
+    /* data values */
+    cbor_base_uint_t int_value; /* used as a simple value or length of data */
     double float_value;         /* used with CBOR_TOKEN_TYPE_FLOAT type only */
     const uint8_t *bytes_value; /* used with CBOR_TOKEN_TYPE_BYTES and CBOR_TOKEN_TYPE_STRING types */
-    const char *error_value;    /* used with CBOR_TOKEN_TYPE_ERROR type only */
+} cbor_token_data_t;
+
+#define CBOR_TOKEN_INFO_SIZE \
+    (sizeof(cbor_token_data_t) - sizeof(cbor_token_type_t) - sizeof (const char *))
+
+typedef struct
+{
+    cbor_token_type_t type;
+    const char *error_message;
+    uint8_t x_files[CBOR_TOKEN_INFO_SIZE]; /* options and data are hidden */
 } cbor_token_t;
+
+#define CBOR_GET_PINT(token) (cbor_base_uint_t)(((cbor_token_data_t *)(token))->int_value)
+#define CBOR_GET_NINT(token) (cbor_base_int_t)(-((cbor_base_int_t)(((cbor_token_data_t *)(token))->int_value)) - 1)
+#define CBOR_GET_ARRAY(token) (cbor_base_uint_t)(((cbor_token_data_t *)(token))->int_value)
+#define CBOR_GET_STRING_LENGTH(token) (cbor_base_uint_t)(((cbor_token_data_t *)(token))->int_value)
+#define CBOR_GET_BYTES_SIZE(token) (cbor_base_uint_t)(((cbor_token_data_t *)(token))->int_value)
+#define CBOR_GET_STRING(token) (const char *)(((cbor_token_data_t *)(token))->bytes_value)
+#define CBOR_GET_BYTES(token) (const uint8_t *)(((cbor_token_data_t *)(token))->bytes_value)
+#define CBOR_GET_MAP(token) (cbor_base_uint_t)(((cbor_token_data_t *)(token))->int_value)
+#define CBOR_GET_TAG(token) (cbor_base_uint_t)(((cbor_token_data_t *)(token))->int_value)
+#define CBOR_GET_SPECIAL(token) (uint8_t)(((cbor_token_data_t *)(token))->int_value)
+#define CBOR_GET_BOOLEAN(token) (cbor_bool_t)(((cbor_token_data_t *)(token))->int_value)
+#define CBOR_GET_FLOAT(token) (double)(((cbor_token_data_t *)(token))->float_value)
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
-
-cbor_bool_t cbor_read_token(const uint8_t **data, const uint8_t *end, cbor_token_t *token);
 
 /* write data */
 
@@ -100,26 +125,28 @@ cbor_bool_t cbor_write_special(uint8_t **data, size_t size, uint8_t special);
 
 /* read data */
 
-cbor_bool_t cbor_read_uint(const uint8_t **data, size_t data_size, cbor_base_uint_t *value);
-cbor_bool_t cbor_read_int(const uint8_t **data, size_t data_size, cbor_base_int_t *value);
+cbor_bool_t cbor_init_read(cbor_token_t *token, const uint8_t *data, size_t data_size, cbor_bool_t next_on_read);
+cbor_bool_t cbor_read_next(cbor_token_t *token); /* used when we don't need to read anything */
 
-cbor_bool_t cbor_read_float(const uint8_t **data, size_t data_size, float *value);
-cbor_bool_t cbor_read_double(const uint8_t **data, size_t data_size, double *value);
+cbor_bool_t cbor_read_uint(cbor_token_t *token, cbor_base_uint_t *value);
+cbor_bool_t cbor_read_int(cbor_token_t *token, cbor_base_int_t *value);
 
-cbor_bool_t cbor_read_boolean(const uint8_t **data, size_t data_size, cbor_bool_t *value);
-cbor_bool_t cbor_read_null(const uint8_t **data, size_t data_size);
-cbor_bool_t cbor_read_undefined(const uint8_t **data, size_t data_size);
+cbor_bool_t cbor_read_float(cbor_token_t *token, float *value);
+cbor_bool_t cbor_read_double(cbor_token_t *token, double *value);
 
-cbor_bool_t cbor_get_string_length(const uint8_t *data, size_t data_size, size_t *string_length);
-cbor_bool_t cbor_read_string(const uint8_t **data, size_t data_size, char *buf, size_t buf_size);
-cbor_bool_t cbor_read_raw_string(const uint8_t **data, size_t data_size, char *buf, size_t buf_size);
-cbor_bool_t cbor_get_bytes_size(const uint8_t *data, size_t data_size, size_t *bytes_size);
-cbor_bool_t cbor_read_bytes(const uint8_t **data, size_t data_size, uint8_t *buf, size_t buf_size);
+cbor_bool_t cbor_read_boolean(cbor_token_t *token, cbor_bool_t *value);
 
-cbor_bool_t cbor_read_array(const uint8_t **data, size_t data_size, cbor_base_uint_t *array_size);
-cbor_bool_t cbor_read_map(const uint8_t **data, size_t data_size, cbor_base_uint_t *map_size);
-cbor_bool_t cbor_read_tag(const uint8_t **data, size_t data_size, cbor_base_uint_t *tag);
-cbor_bool_t cbor_read_special(const uint8_t **data, size_t data_size, uint8_t *special);
+cbor_bool_t cbor_get_string_length(cbor_token_t *token, size_t *string_length);
+cbor_bool_t cbor_get_bytes_size(cbor_token_t *token, size_t *bytes_size);
+
+cbor_bool_t cbor_read_string(cbor_token_t *token, char *buf, size_t buf_size);
+cbor_bool_t cbor_read_raw_string(cbor_token_t *token, char *buf, size_t buf_size);
+cbor_bool_t cbor_read_bytes(cbor_token_t *token, uint8_t *buf, size_t buf_size);
+
+cbor_bool_t cbor_read_array(cbor_token_t *token, cbor_base_uint_t *array_size);
+cbor_bool_t cbor_read_map(cbor_token_t *token, cbor_base_uint_t *map_size);
+cbor_bool_t cbor_read_tag(cbor_token_t *token, cbor_base_uint_t *tag);
+cbor_bool_t cbor_read_special(cbor_token_t *token, uint8_t *special);
 
 #ifdef __cplusplus
 }
