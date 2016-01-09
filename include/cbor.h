@@ -126,7 +126,7 @@ cbor_bool_t cbor_write_special(uint8_t **data, size_t size, uint8_t special);
 /* read data */
 
 cbor_bool_t cbor_init_read(cbor_token_t *token, const uint8_t *data, size_t data_size, cbor_bool_t next_on_read);
-cbor_bool_t cbor_read_next(cbor_token_t *token); /* used when we don't need to read anything */
+cbor_bool_t cbor_read_next(cbor_token_t *token);
 
 cbor_bool_t cbor_read_uint(cbor_token_t *token, cbor_base_uint_t *value);
 cbor_bool_t cbor_read_int(cbor_token_t *token, cbor_base_int_t *value);
