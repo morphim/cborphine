@@ -56,6 +56,7 @@ project "cborphine-tests"
     includedirs { "./include" }
     links { "cborphine" }
     files { "**.h", "test/**.c" }
+    removefiles { "./include/internal.h" }
 
     filter "configurations:Debug"
         defines { "_DEBUG" }
