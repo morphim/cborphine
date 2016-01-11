@@ -22,6 +22,7 @@ THE SOFTWARE.
 
 #include <stdio.h>
 #include <assert.h>
+#include <string.h>
 #include "cbor.h"
 
 struct struct_type
