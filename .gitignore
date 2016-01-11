@@ -1,0 +1,10 @@
+bin/*
+obj/*
+*.vcproj
+*.opendb
+*.sln
+*.sdf
+*.suo
+*.vcxproj
+*.vcxproj.filters
+*.exe
