@@ -76,3 +76,20 @@ project "cborphine-tests"
     filter "configurations:Release"
         defines { "NDEBUG" }
         optimize "On"
+
+project "cborphine-example"
+    kind "ConsoleApp"
+    language "C"
+    targetdir "bin/%{cfg.platform}/%{cfg.buildcfg}"
+    includedirs { "./include" }
+    links { "cborphine" }
+    files { "include/**.h", "example/**.c" }
+    removefiles { "./include/internal.h" }
+
+    filter "configurations:Debug"
+        defines { "_DEBUG" }
+        flags { "Symbols" }
+
+    filter "configurations:Release"
+        defines { "NDEBUG" }
+        optimize "On"		
