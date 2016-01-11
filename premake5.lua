@@ -31,10 +31,10 @@ solution "cborphine"
 
 project "cborphine"
     kind "StaticLib"
-    language "C"
+    language "C++"
     targetdir "bin/%{cfg.platform}/%{cfg.buildcfg}"
     includedirs { "./include" }
-    files { "**.h", "src/**.c" }
+    files { "include/**.h", "src/**.c" }
 
     filter "configurations:Debug"
         defines { "_DEBUG" }
@@ -51,15 +51,26 @@ project "cborphine"
 
 project "cborphine-tests"
     kind "ConsoleApp"
-    language "C"
+    language "C++"
     targetdir "bin/%{cfg.platform}/%{cfg.buildcfg}"
-    includedirs { "./include" }
+       	
+    includedirs {
+        "./include",
+        "./test/"
+    }
+	
+	removefiles { "./include/internal.h" }
+
+    files {
+        "**.h",
+        "./test/gtest/**.cc",
+        "./test/**.cpp"
+    }
+
     links { "cborphine" }
-    files { "**.h", "test/**.c" }
-    removefiles { "./include/internal.h" }
 
     filter "configurations:Debug"
-        defines { "_DEBUG" }
+        defines { "DEBUG" }
         flags { "Symbols" }
 
     filter "configurations:Release"
