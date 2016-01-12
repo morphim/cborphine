@@ -59,7 +59,7 @@ project "cborphine-tests"
         "./test/"
     }
 	
-	removefiles { "./include/internal.h" }
+    removefiles { "./include/internal.h" }
 
     files {
         "**.h",
