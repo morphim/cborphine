@@ -25,18 +25,38 @@ THE SOFTWARE.
 
 void CborphineTest::SetUp()
 {
-    _size = sizeof(_buffer);
-    _data = _buffer;
+    _buffer.resize(4096);
+    _expected = _buffer;
+    _data     = &_buffer[0];
+    _size     = _buffer.size();
 }
 
 TEST_F(CborphineTest, WriteNull)
 {
+    _expected[0] = 0xf6;
+
     ASSERT_EQ(CBOR_TRUE, cbor_write_null(&_data, _size));
+    ASSERT_EQ(_expected, _buffer);
+}
+
+TEST_F(CborphineTest, WriteNullWithZeroBufferSize)
+{
+    ASSERT_EQ(CBOR_FALSE, cbor_write_null(&_data, 0));
+    ASSERT_EQ(_expected, _buffer);
 }
 
 TEST_F(CborphineTest, WriteUndefined)
 {
+    _expected[0] = 0xf7;
+
     ASSERT_EQ(CBOR_TRUE, cbor_write_undefined(&_data, _size));
+    ASSERT_EQ(_expected, _buffer);
+}
+
+TEST_F(CborphineTest, WriteUndefinedWithZeroBufferSize)
+{
+    ASSERT_EQ(CBOR_FALSE, cbor_write_undefined(&_data, 0));
+    ASSERT_EQ(_expected, _buffer);
 }
 
 

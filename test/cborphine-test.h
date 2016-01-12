@@ -12,10 +12,10 @@ public: // ::testing::Test
 
 protected:
 
-    uint8_t  _buffer[4096];
-    size_t   _size;
-    uint8_t* _data;
-
+    std::vector<uint8_t> _buffer;
+    std::vector<uint8_t> _expected;
+    uint8_t*             _data;
+    size_t               _size;
 };
 
 #endif // CBORPHINE_TEST_H
