@@ -1,6 +1,7 @@
-#include "cborphine-test.h"
+#include "cborphine-string-test.h"
 
-TEST_F(CborphineTest, WriteString)
+TEST_F(CborphineStringTest, Write_a)
 {
-    ASSERT_EQ(CBOR_TRUE, cbor_write_string(&_data, _size, "hello"));
+    setExpected("61 61");
+    ASSERT_EQ(CBOR_TRUE, cbor_write_string(&_data, _size, "a"));
 }

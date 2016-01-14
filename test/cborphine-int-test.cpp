@@ -1,140 +1,91 @@
-#include "cborphine-test.h"
+#include "cborphine-int-test.h"
 
-TEST_F(CborphineTest, WriteIntegerWithZeroBufferSize)
+TEST_F(CborphineIntTest, WriteWithZeroBufferSize)
 {
     ASSERT_EQ(CBOR_FALSE, cbor_write_int(&_data, 0, 1));
-    ASSERT_EQ(_expected, _buffer);
 }
 
-TEST_F(CborphineTest, WritePositiveInteger_0)
+TEST_F(CborphineIntTest, Write_0)
 {
-    _buffer[0]   = 0xff;
-    _expected[0] = 0x00;
-    
+    _buffer[0] = 0xff;
     ASSERT_EQ(CBOR_TRUE, cbor_write_int(&_data, _size, 0));
-    ASSERT_EQ(_expected, _buffer);
 }
 
-TEST_F(CborphineTest, WritePositiveInteger_1)
+TEST_F(CborphineIntTest, Write_1)
 {
-    _expected[0] = 0x01;
-
+    setExpected("01");
     ASSERT_EQ(CBOR_TRUE, cbor_write_int(&_data, _size, 1));
-    ASSERT_EQ(_expected, _buffer);
 }
 
-TEST_F(CborphineTest, WritePositiveInteger_10)
+TEST_F(CborphineIntTest, Write_10)
 {
-    _expected[0] = 0x0a;
-
+    setExpected("0a");
     ASSERT_EQ(CBOR_TRUE, cbor_write_int(&_data, _size, 10));
-    ASSERT_EQ(_expected, _buffer);
 }
 
-TEST_F(CborphineTest, WritePositiveInteger_23)
+TEST_F(CborphineIntTest, Write_23)
 {
-    _expected[0] = 0x17;
-
+    setExpected("17");
     ASSERT_EQ(CBOR_TRUE, cbor_write_int(&_data, _size, 23));
-    ASSERT_EQ(_expected, _buffer);
 }
 
-TEST_F(CborphineTest, WritePositiveInteger_24)
+TEST_F(CborphineIntTest, Write_24)
 {
-    _expected[0] = 0x18;
-    _expected[1] = 0x18;
-
+    setExpected("18 18");
     ASSERT_EQ(CBOR_TRUE, cbor_write_int(&_data, _size, 24));
-    ASSERT_EQ(_expected, _buffer);
 }
 
-TEST_F(CborphineTest, WritePositiveInteger_25)
+TEST_F(CborphineIntTest, Write_25)
 {
-    _expected[0] = 0x18;
-    _expected[1] = 0x19;
-
+    setExpected("18 19");
     ASSERT_EQ(CBOR_TRUE, cbor_write_int(&_data, _size, 25));
-    ASSERT_EQ(_expected, _buffer);
 }
 
-TEST_F(CborphineTest, WritePositiveInteger_100)
+TEST_F(CborphineIntTest, Write_100)
 {
-    _expected[0] = 0x18;
-    _expected[1] = 0x64;
-
+    setExpected("18 64");
     ASSERT_EQ(CBOR_TRUE, cbor_write_int(&_data, _size, 100));
-    ASSERT_EQ(_expected, _buffer);
 }
 
-TEST_F(CborphineTest, WritePositiveInteger_1000)
+TEST_F(CborphineIntTest, Write_1000)
 {
-    _expected[0] = 0x19;
-    _expected[1] = 0x03;
-    _expected[2] = 0xe8;
-
+    setExpected("19 03 e8");
     ASSERT_EQ(CBOR_TRUE, cbor_write_int(&_data, _size, 1000));
-    ASSERT_EQ(_expected, _buffer);
 }
 
-TEST_F(CborphineTest, WritePositiveInteger_1000000)
+TEST_F(CborphineIntTest, Write_1000000)
 {
-    _expected[0] = 0x1a;
-    _expected[1] = 0x00;
-    _expected[2] = 0x0f;
-    _expected[3] = 0x42;
-    _expected[4] = 0x40;
-
+    setExpected("1a 00 0f 42 40");
     ASSERT_EQ(CBOR_TRUE, cbor_write_int(&_data, _size, 1000000));
-    ASSERT_EQ(_expected, _buffer);
 }
 
-TEST_F(CborphineTest, WritePositiveInteger_1000000000000)
+TEST_F(CborphineIntTest, Write_1000000000000)
 {
-    _expected[0] = 0x1b;
-    _expected[1] = 0x00;
-    _expected[2] = 0x00;
-    _expected[3] = 0x00;
-    _expected[4] = 0xe8;
-    _expected[5] = 0xd4;
-    _expected[6] = 0xa5;
-    _expected[7] = 0x10;
-    _expected[8] = 0x00;
-
+    setExpected("1b 00 00 00 e8 d4 a5 10 00");
+    _buffer[8] = 0xff;
     ASSERT_EQ(CBOR_TRUE, cbor_write_int(&_data, _size, 1000000000000LL));
-    ASSERT_EQ(_expected, _buffer);
 }
 
-TEST_F(CborphineTest, WriteNegativeInteger_minus_1)
+TEST_F(CborphineIntTest, Write_minus_1)
 {
-    _expected[0] = 0x20;
-
+    setExpected("20");
     ASSERT_EQ(CBOR_TRUE, cbor_write_int(&_data, _size, -1));
-    ASSERT_EQ(_expected, _buffer);
 }
 
-TEST_F(CborphineTest, WriteNegativeInteger_minus_10)
+TEST_F(CborphineIntTest, Write_minus_10)
 {
-    _expected[0] = 0x29;
-
+    setExpected("29");
     ASSERT_EQ(CBOR_TRUE, cbor_write_int(&_data, _size, -10));
-    ASSERT_EQ(_expected, _buffer);
 }
 
-TEST_F(CborphineTest, WriteNegativeInteger_minus_100)
+TEST_F(CborphineIntTest, Write_minus_100)
 {
-    _expected[0] = 0x38;
-    _expected[1] = 0x63;
-
+    setExpected("38 63");
     ASSERT_EQ(CBOR_TRUE, cbor_write_int(&_data, _size, -100));
-    ASSERT_EQ(_expected, _buffer);
 }
 
-TEST_F(CborphineTest, WriteNegativeInteger_minus_1000)
+TEST_F(CborphineIntTest, Write_minus_1000)
 {
-    _expected[0] = 0x39;
-    _expected[1] = 0x03;
-    _expected[2] = 0xe7;
-    
+    setExpected("39 03 e7");
     ASSERT_EQ(CBOR_TRUE, cbor_write_int(&_data, _size, -1000));
-    ASSERT_EQ(_expected, _buffer);
 }

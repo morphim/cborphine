@@ -1,17 +1,13 @@
-#include "cborphine-test.h"
+#include "cborphine-boolean-test.h"
 
-TEST_F(CborphineTest, WriteBooleanTrue)
+TEST_F(CborphineBooleanTest, WriteTrue)
 {
-    _expected[0] = 0xf5;
-
+    setExpected("f5");
     ASSERT_EQ(CBOR_TRUE, cbor_write_boolean(&_data, _size, CBOR_TRUE));
-    ASSERT_EQ(_expected, _buffer);
 }
 
-TEST_F(CborphineTest, WriteBooleanFalse)
+TEST_F(CborphineBooleanTest, WriteFalse)
 {
-    _expected[0] = 0xf4;
-
+    setExpected("f4");
     ASSERT_EQ(CBOR_TRUE, cbor_write_boolean(&_data, _size, CBOR_FALSE));
-    ASSERT_EQ(_expected, _buffer);
 }

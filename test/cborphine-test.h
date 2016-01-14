@@ -10,6 +10,12 @@ public: // ::testing::Test
 
     virtual void SetUp();
 
+    virtual void TearDown();
+
+protected:
+
+    void setExpected(const std::string& value);
+
 protected:
 
     std::vector<uint8_t> _buffer;

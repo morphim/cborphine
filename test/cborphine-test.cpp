@@ -31,32 +31,59 @@ void CborphineTest::SetUp()
     _size     = _buffer.size();
 }
 
+void CborphineTest::TearDown()
+{
+    ASSERT_EQ(_expected, _buffer);
+}
+
+void CborphineTest::setExpected(const std::string& value)
+{
+    std::string srcValue = value;
+    srcValue.erase(remove_if(srcValue.begin(), srcValue.end(), isspace), srcValue.end());
+
+    if (srcValue.length() % 2 != 0)
+    {
+        throw std::logic_error("Incorrect hex string");
+    }
+
+    std::string byteStr; 
+    std::vector<uint8_t> bytes;
+
+    for (size_t i = 0; i < srcValue.length(); i += 2)
+    {
+        byteStr = srcValue.substr(i, 2);
+        uint8_t byte = (uint8_t)std::strtol(byteStr.c_str(), NULL, 16);
+        bytes.push_back(byte);
+    }
+    
+    _expected.assign(bytes.begin(), bytes.end());
+
+    if (_expected.size() < _buffer.size())
+    {
+        _expected.resize(_buffer.size());
+    }
+}
+
 TEST_F(CborphineTest, WriteNull)
 {
-    _expected[0] = 0xf6;
-
+    setExpected("f6");
     ASSERT_EQ(CBOR_TRUE, cbor_write_null(&_data, _size));
-    ASSERT_EQ(_expected, _buffer);
 }
 
 TEST_F(CborphineTest, WriteNullWithZeroBufferSize)
 {
     ASSERT_EQ(CBOR_FALSE, cbor_write_null(&_data, 0));
-    ASSERT_EQ(_expected, _buffer);
 }
 
 TEST_F(CborphineTest, WriteUndefined)
 {
-    _expected[0] = 0xf7;
-
+    setExpected("f7");
     ASSERT_EQ(CBOR_TRUE, cbor_write_undefined(&_data, _size));
-    ASSERT_EQ(_expected, _buffer);
 }
 
 TEST_F(CborphineTest, WriteUndefinedWithZeroBufferSize)
 {
     ASSERT_EQ(CBOR_FALSE, cbor_write_undefined(&_data, 0));
-    ASSERT_EQ(_expected, _buffer);
 }
 
 
